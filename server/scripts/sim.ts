@@ -10,7 +10,7 @@ type Client = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 function once<T>(socket: Client, event: keyof ServerToClientEvents, match: (v: T) => boolean = () => true): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`timed out waiting for ${String(event)}`)), 3000);
+    const timer = setTimeout(() => reject(new Error(`timed out waiting for ${String(event)}`)), 10000);
     const handler = (v: T) => {
       if (!match(v)) return;
       clearTimeout(timer);
@@ -141,6 +141,68 @@ async function main() {
     const after = once<{ players: unknown[] }>(b, "game:state", (s) => s.players.length === 3);
     a.disconnect();
     check((await after).players.length === 3, "a disconnect is shown to the others");
+
+    console.log("full games: meetings and voting");
+    const { MEETING_BUTTON } = await import("@whtb/shared/map");
+    const atButton = { x: MEETING_BUTTON.x, z: MEETING_BUTTON.z + 1, heading: 0 };
+
+    /** A fresh 4-player game; returns the clients and their roles. */
+    const newGame = async () => {
+      const ps = await Promise.all([open(), open(), open(), open()]);
+      const roleOfP = new Map<Client, string>();
+      ps.forEach((s) => s.on("game:role", ({ role }) => roleOfP.set(s, role)));
+      ps[0].emit("lobby:create", { name: "H" });
+      const { code } = await once<{ code: string }>(ps[0], "lobby:state");
+      ps.slice(1).forEach((s, i) => s.emit("lobby:join", { code, name: `P${i}` }));
+      await once(ps[0], "lobby:state", (st: { players: unknown[] }) => st.players.length === 4);
+      const go = Promise.all(ps.map((s) => once(s, "game:state")));
+      ps[0].emit("lobby:start");
+      await go;
+      await new Promise((r) => setTimeout(r, 150));
+      return { ps, roleOfP };
+    };
+    /** Someone calls a meeting and everyone alive votes for `target`. */
+    const meetingVotingFor = async (ps: Client[], caller: Client, target: Client, voters: Client[]) => {
+      caller.emit("move", atButton);
+      await new Promise((r) => setTimeout(r, 150));
+      const meeting = Promise.all(ps.map((s) => once<{ phase: string }>(s, "game:state", (g) => g.phase === "meeting")));
+      caller.emit("meeting:call");
+      await meeting;
+      const chatSeen = once<{ text: string }>(target, "chat:message");
+      caller.emit("chat:send", { text: "I saw you near the hacked terminal!" });
+      await chatSeen;
+      const result = once<{ ejectedId: string | null; wasBluffer: boolean }>(ps[0], "vote:result");
+      voters.forEach((v) => v.emit("vote:cast", { targetId: v === target ? null : target.id! }));
+      return result;
+    };
+
+    {
+      const { ps, roleOfP } = await newGame();
+      const bl = ps.find((s) => roleOfP.get(s) === "bluffer")!;
+      const caller = ps.find((s) => s !== bl)!;
+      const overSeen = once<{ winner: string; roles: Record<string, string> }>(ps[1], "game:over");
+      const result = await meetingVotingFor(ps, caller, bl, ps);
+      check(result.ejectedId === bl.id && result.wasBluffer, "class votes out the Bluffer: result says they WERE the Bluffer");
+      const over = await overSeen;
+      check(over.winner === "class" && Object.keys(over.roles).length === 4, "game over: class wins, every role revealed");
+      ps.forEach((s) => s.disconnect());
+    }
+
+    {
+      const { ps, roleOfP } = await newGame();
+      const bl = ps.find((s) => roleOfP.get(s) === "bluffer")!;
+      const innocents = ps.filter((s) => s !== bl);
+      let alive = [...ps];
+      const r1 = await meetingVotingFor(ps, innocents[0], innocents[1], alive);
+      check(r1.ejectedId === innocents[1].id && !r1.wasBluffer, "an innocent is voted out: result says NOT the Bluffer");
+      alive = alive.filter((s) => s !== innocents[1]);
+      await once(ps[0], "game:respawn");
+      check(true, "play resumes and everyone goes back to their seats");
+      const overSeen = once<{ winner: string }>(ps[0], "game:over");
+      await meetingVotingFor(ps, innocents[2], innocents[0], alive);
+      check((await overSeen).winner === "bluffer", "Bluffer wins when only they and one classmate remain");
+      ps.forEach((s) => s.disconnect());
+    }
 
     console.log("\nAll simulation checks passed.");
   } finally {

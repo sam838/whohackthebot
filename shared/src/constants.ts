@@ -15,6 +15,9 @@ export const QUESTION_SECONDS = 30;
 export const DOUBLE_CHECK_COST_SECONDS = 8;
 export const HACK_COOLDOWN_SECONDS = 30;
 export const MEETING_SECONDS = 90;
+/** How long the vote result stays on screen before play resumes. */
+export const VOTE_RESULT_SECONDS = 6;
+export const CHAT_MAX_LENGTH = 140;
 export const MEETING_CALLS_PER_PLAYER = 1;
 export const REVEAL_SECONDS = 8;
 

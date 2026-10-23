@@ -3,6 +3,7 @@
 // can start it on any port.
 
 import { POSITION_BROADCAST_RATE } from "@whtb/shared/constants";
+import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { ClientToServerEvents, ServerToClientEvents } from "@whtb/shared/events";
 import express from "express";
 import { createServer } from "node:http";
@@ -33,6 +34,18 @@ export function createApp() {
       {
         // A socket id doubles as a private room, so this reaches one player only.
         toPlayer: (id, event, payload) => (io.to(id).emit as (e: string, p: unknown) => boolean)(event, payload),
+        toRoom: (event, payload) => (io.to(room.code).emit as (e: string, p: unknown) => boolean)(event, payload),
+        respawn: (ids) => {
+          const seats: Record<string, { x: number; z: number }> = {};
+          ids.forEach((id, i) => {
+            const seat = SPAWN_SEATS[i % SPAWN_SEATS.length];
+            const p = room.players.get(id);
+            if (p) p.position = { x: seat.x, z: seat.z, heading: Math.PI };
+            seats[id] = seat;
+          });
+          room.positionsDirty = true;
+          io.to(room.code).emit("game:respawn", { seats });
+        },
         publicChanged: () => {
           const over = room.game?.gameOver();
           if (over && room.phase !== "over") {
@@ -99,7 +112,7 @@ export function createApp() {
 
     socket.on("move", (pos) => {
       const room = rooms.roomOf(socket.id);
-      if (room?.game && !room.game.isAlive(socket.id)) return;
+      if (room?.game && (!room.game.isAlive(socket.id) || room.game.phase !== "playing")) return;
       rooms.move(socket.id, pos);
     });
 
@@ -108,6 +121,10 @@ export function createApp() {
     socket.on("terminal:arrange", (p) => act((g) => g.arrange(socket.id, Array.isArray(p?.order) ? p.order.map(String) : [])));
     socket.on("terminal:botArrange", () => act((g) => g.botArrange(socket.id)));
     socket.on("terminal:close", () => act((g) => g.close(socket.id)));
+    socket.on("meeting:call", () => act((g) => g.callMeeting(socket.id)));
+    socket.on("chat:send", (p) => act((g) => g.chat(socket.id, p?.text)));
+    socket.on("vote:cast", (p) => act((g) => g.vote(socket.id, typeof p?.targetId === "string" ? p.targetId : null)));
+    socket.on("room:leave", leaveCurrent);
     socket.on("terminal:answer", (p) =>
       act((g) => g.answer(socket.id, Number.isInteger(p?.choiceIndex) ? p.choiceIndex : null)),
     );

@@ -12,6 +12,7 @@ import type {
   PlayerPosition,
   Role,
   TerminalQuestion,
+  VoteResult,
 } from "./types";
 
 export interface ClientToServerEvents {
@@ -25,6 +26,11 @@ export interface ClientToServerEvents {
   "terminal:botArrange": () => void;
   /** Walk away from the terminal without answering. */
   "terminal:close": () => void;
+  "meeting:call": () => void;
+  "chat:send": (p: { text: string }) => void;
+  "vote:cast": (p: { targetId: string | null }) => void;
+  /** Leave the room and go back to the menu. */
+  "room:leave": () => void;
   "terminal:answer": (p: { choiceIndex: number }) => void;
   "terminal:doubleCheck": () => void;
   "terminal:verify": () => void;
@@ -54,4 +60,8 @@ export interface ServerToClientEvents {
   "terminal:hackUsed": (p: { terminalId: string }) => void;
   // Everyone in the room.
   "game:over": (p: GameOver) => void;
+  "chat:message": (p: { fromId: string; text: string }) => void;
+  "vote:result": (p: VoteResult) => void;
+  /** After a meeting everyone goes back to their classroom seat. */
+  "game:respawn": (p: { seats: Record<string, { x: number; z: number }> }) => void;
 }

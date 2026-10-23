@@ -26,9 +26,9 @@ function Scene({ players, myId }: SceneProps) {
       <hemisphereLight args={["#ffffff", "#b9a7c9", 1.6]} />
       <directionalLight position={[8, 20, 12]} intensity={1.4} />
       <SchoolMap />
-      <Player color={myColor} body={me} isYou />
+      <Player color={myColor} body={me} isYou ghost={!players[myIndex]?.alive} />
       {players
-        .filter((p) => p.id !== myId)
+        .filter((p) => p.id !== myId && p.alive)
         .map((p) => (
           <RemotePlayer key={p.id} id={p.id} color={p.color} />
         ))}

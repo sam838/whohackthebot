@@ -1,6 +1,6 @@
 // Shapes that travel between server and client.
 
-export type Phase = "lobby" | "playing" | "over";
+export type Phase = "lobby" | "playing" | "meeting" | "voteResult" | "over";
 
 export type Role = "student" | "bluffer" | "factChecker";
 
@@ -26,6 +26,21 @@ export interface GameStatePublic {
   strikes: number;
   progress: number;
   goal: number;
+  /** Who called the current meeting. */
+  meetingCallerId?: string;
+  /** Milliseconds left in the meeting or vote-result phase. */
+  phaseMsLeft?: number;
+  /** Who has voted in this meeting (not for whom). */
+  votedIds: string[];
+  /** Meetings each player can still call. */
+  meetingCallsLeft: Record<string, number>;
+}
+
+export interface VoteResult {
+  ejectedId: string | null;
+  wasBluffer: boolean;
+  /** Votes per player id, plus "skip". */
+  counts: Record<string, number>;
 }
 
 export interface PlayerPosition {

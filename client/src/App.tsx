@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { GameView } from "./game/GameView";
 import { attachKeyboard } from "./game/input";
 import { ActionButton } from "./hud/ActionButton";
-import { GameOverNotice } from "./hud/GameOverNotice";
+import { GameOver } from "./screens/GameOver";
+import { Meeting } from "./screens/Meeting";
+import { VoteResultScreen } from "./screens/VoteResult";
 import { Joystick } from "./hud/Joystick";
 import { StrikeBar } from "./hud/StrikeBar";
 import { TaskList } from "./hud/TaskList";
 import { socket } from "./net/socket";
-import { currentScreen, panelOpen, useGame } from "./net/store";
+import { amAlive, currentScreen, panelOpen, useGame } from "./net/store";
 import { Join } from "./screens/Join";
 import { Lobby } from "./screens/Lobby";
 import { MainMenu } from "./screens/MainMenu";
@@ -19,6 +21,13 @@ function ConnectionBanner() {
   const connected = useGame((s) => s.connected);
   if (connected) return null;
   return <div className="banner">Connecting to school… (this can take up to a minute)</div>;
+}
+
+function SpectatorBanner() {
+  const alive = useGame(amAlive);
+  const over = useGame((s) => Boolean(s.gameOver));
+  if (alive || over) return null;
+  return <div className="spectator">You were kicked out of school. Watching the class…</div>;
 }
 
 function Toast() {
@@ -34,10 +43,11 @@ function Toast() {
 function useUseKey() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "KeyE" || e.repeat) return;
+      if (e.code !== "KeyE" || e.repeat || e.target instanceof HTMLInputElement) return;
       const s = useGame.getState();
-      const { nearTerminal, gameOver } = s;
-      if (nearTerminal && !panelOpen(s) && !gameOver) socket.emit("terminal:open", { terminalId: nearTerminal });
+      if (panelOpen(s) || s.gameOver || s.game?.phase !== "playing" || !amAlive(s)) return;
+      if (s.nearButton) socket.emit("meeting:call");
+      else if (s.nearTerminal) socket.emit("terminal:open", { terminalId: s.nearTerminal });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -69,8 +79,11 @@ export function App() {
             {isTouch && <Joystick />}
             <ActionButton />
           </div>
+          <SpectatorBanner />
           <TerminalPanel />
-          <GameOverNotice />
+          {game.phase === "meeting" && <Meeting />}
+          {game.phase === "voteResult" && <VoteResultScreen />}
+          <GameOver />
           <Toast />
         </>
       )}

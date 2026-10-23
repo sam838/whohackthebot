@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { socket } from "../net/socket";
-import { panelOpen, useGame } from "../net/store";
+import { amAlive, panelOpen, useGame } from "../net/store";
 
 /** Context buttons: Use (at a terminal) and, for the Bluffer, Hack with its cooldown. */
 export function ActionButton() {
   const near = useGame((s) => s.nearTerminal);
+  const nearButton = useGame((s) => s.nearButton);
+  const alive = useGame(amAlive);
+  const playing = useGame((s) => s.game?.phase === "playing");
+  const callsLeft = useGame((s) => (s.myId ? (s.game?.meetingCallsLeft[s.myId] ?? 0) : 0));
   const role = useGame((s) => s.role);
   const hackReadyAt = useGame((s) => s.hackReadyAt);
   const busy = useGame(panelOpen);
@@ -17,7 +21,17 @@ export function ActionButton() {
     return () => clearTimeout(t);
   }, [hackReadyAt, now]);
 
-  if (!near || busy) return null;
+  if (busy || !alive || !playing) return null;
+  if (nearButton) {
+    return (
+      <div className="actions">
+        <button className="action meeting" disabled={callsLeft <= 0} onClick={() => socket.emit("meeting:call")}>
+          {callsLeft > 0 ? "Meeting!" : "Used"}
+        </button>
+      </div>
+    );
+  }
+  if (!near) return null;
   const cooldown = Math.ceil((hackReadyAt - performance.now()) / 1000);
 
   return (

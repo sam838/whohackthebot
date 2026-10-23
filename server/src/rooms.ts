@@ -158,11 +158,15 @@ export function lobbyState(room: Room): LobbyState {
 export function gameState(room: Room): GameStatePublic {
   const g = room.game;
   return {
-    phase: room.phase,
+    phase: room.phase === "playing" && g ? g.phase : room.phase,
     players: publicPlayers(room),
     strikes: g?.strikes ?? 0,
     progress: g?.progress ?? 0,
     goal: g?.goal() ?? 0,
+    meetingCallerId: g?.meetingCallerId,
+    phaseMsLeft: g?.phaseMsLeft(),
+    votedIds: g?.votedIds() ?? [],
+    meetingCallsLeft: g?.meetingCallsLeft() ?? {},
   };
 }
 

@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Group, Mesh } from "three";
 import type { Body } from "./useMovement";
 
@@ -7,13 +7,15 @@ interface PlayerProps {
   color: string;
   body: React.RefObject<Body>;
   isYou?: boolean;
+  /** Kicked out: drawn see-through, like a ghost watching the class. */
+  ghost?: boolean;
 }
 
 /**
  * A player character. For now this is the bean fallback (spec.md > Important
  * Failure Modes); CC0 models arrive in slice 5.
  */
-export function Player({ color, body, isYou }: PlayerProps) {
+export function Player({ color, body, isYou, ghost }: PlayerProps) {
   const group = useRef<Group>(null);
   const legL = useRef<Mesh>(null);
   const legR = useRef<Mesh>(null);
@@ -37,6 +39,16 @@ export function Player({ color, body, isYou }: PlayerProps) {
     legL.current!.position.z = swing;
     legR.current!.position.z = -swing;
   });
+
+  useEffect(() => {
+    group.current?.traverse((o) => {
+      const m = (o as Mesh).material as { transparent?: boolean; opacity?: number } | undefined;
+      if (m) {
+        m.transparent = Boolean(ghost);
+        m.opacity = ghost ? 0.35 : 1;
+      }
+    });
+  }, [ghost]);
 
   return (
     <group ref={group}>

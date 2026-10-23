@@ -4,7 +4,7 @@ import { QUESTIONS } from "@whtb/shared/questions";
 import type { PieceInfo, Role } from "@whtb/shared/types";
 import { describe, expect, it } from "vitest";
 import { GameRoom, type Sender } from "./GameRoom";
-import { assignRoles, checkWinner } from "./rules";
+import { assignRoles, checkWinner, tallyVotes } from "./rules";
 
 interface Sent {
   to: string;
@@ -17,9 +17,12 @@ function setup(n = 4) {
   const sent: Sent[] = [];
   let clock = 1_000_000;
   const positions = new Map(ids.map((id) => [id, { x: 0, z: 0 }]));
+  const respawned: string[][] = [];
   const sender: Sender = {
     toPlayer: (to, event, payload) => sent.push({ to, event, payload }),
+    toRoom: (event, payload) => sent.push({ to: "room", event, payload }),
     publicChanged: () => sent.push({ to: "room", event: "public", payload: null }),
+    respawn: (playerIds) => respawned.push(playerIds),
   };
   const game = new GameRoom(ids, sender, (id) => positions.get(id), Math.random, () => clock);
   game.dealSecrets();
@@ -53,7 +56,9 @@ function setup(n = 4) {
   const advance = (ms: number) => {
     clock += ms;
   };
-  return { game, sent, byRole, last, all, floor, bag, walkTo, pieceIdsOf, grab, solveSetup, advance, positions };
+  const roomLast = (event: string) => sent.filter((x) => x.to === "room" && x.event === event).at(-1)?.payload;
+  const toButton = (id: string) => positions.set(id, { x: 10.4, z: 5.6 });
+  return { game, sent, byRole, last, all, floor, bag, walkTo, pieceIdsOf, grab, solveSetup, advance, positions, roomLast, toButton, respawned, ids };
 }
 
 describe("rules", () => {
@@ -402,5 +407,129 @@ describe("GameRoom", () => {
     expect(b.game.gameOver()).toBeUndefined();
     b.game.removePlayer(s2);
     expect(b.game.gameOver()?.winner).toBe("bluffer");
+  });
+});
+
+describe("vote tally", () => {
+  const v = (entries: [string, string | null][]) => tallyVotes(new Map(entries));
+  it("kicks out the player with the most votes", () => {
+    expect(v([["a", "c"], ["b", "c"], ["c", "a"], ["d", null]]).ejectedId).toBe("c");
+  });
+  it("a tie ejects nobody", () => {
+    expect(v([["a", "c"], ["b", "c"], ["c", "a"], ["d", "a"]]).ejectedId).toBeNull();
+  });
+  it("skip at least as strong as the leader ejects nobody", () => {
+    expect(v([["a", "c"], ["b", null], ["c", null], ["d", "c"]]).ejectedId).toBeNull();
+    expect(v([["a", null], ["b", null]]).ejectedId).toBeNull();
+  });
+  it("counts every vote", () => {
+    expect(v([["a", "c"], ["b", "c"], ["c", null]]).counts).toEqual({ c: 2, skip: 1 });
+  });
+});
+
+describe("meetings", () => {
+  it("must be called at the classroom button, once per player, and closes open terminals", () => {
+    const { game, byRole, toButton, solveSetup, last } = setup();
+    const [s1, s2] = byRole("student");
+    expect(() => game.callMeeting(s1)).toThrow("meeting button");
+    solveSetup(s2, 0);
+    toButton(s1);
+    game.callMeeting(s1);
+    expect(game.phase).toBe("meeting");
+    expect(game.meetingCallerId).toBe(s1);
+    expect(game.meetingCallsLeft()[s1]).toBe(0);
+    // s2's open question is gone; answering now does nothing.
+    game.answer(s2, last(s2, "terminal:question").botPick);
+    expect(game.progress).toBe(0);
+  });
+
+  it("blocks terminals and pieces during a meeting", () => {
+    const { game, byRole, toButton, walkTo } = setup();
+    const s = byRole("student")[0];
+    toButton(s);
+    game.callMeeting(s);
+    walkTo(s, "library-1");
+    expect(() => game.openTerminal(s, "library-1")).toThrow("Not during a meeting");
+  });
+
+  it("chat only works in meetings, for living players, and is trimmed to 140 characters", () => {
+    const { game, byRole, toButton, roomLast } = setup();
+    const s = byRole("student")[0];
+    expect(() => game.chat(s, "hi")).toThrow("Chat opens during meetings");
+    toButton(s);
+    game.callMeeting(s);
+    game.chat(s, "x".repeat(200));
+    expect(roomLast("chat:message")).toEqual({ fromId: s, text: "x".repeat(140) });
+  });
+
+  it("voting out the Bluffer shows the result, then the class wins", () => {
+    const { game, byRole, toButton, roomLast, advance, ids } = setup();
+    const b = byRole("bluffer")[0];
+    toButton(ids[0]);
+    game.callMeeting(ids[0]);
+    for (const id of ids) game.vote(id, id === b ? ids.find((x) => x !== b)! : b);
+    expect(game.phase).toBe("voteResult");
+    expect(roomLast("vote:result")).toMatchObject({ ejectedId: b, wasBluffer: true });
+    expect(game.over).toBe(false); // the result is on screen first
+    advance(6_000);
+    game.tick();
+    expect(game.gameOver()?.winner).toBe("class");
+    expect(game.gameOver()?.reason).toContain("kicked out of school");
+  });
+
+  it("voting out an innocent continues the game and sends everyone back to class", () => {
+    const { game, byRole, toButton, roomLast, advance, respawned, ids } = setup();
+    const [s1] = byRole("student");
+    toButton(ids[0]);
+    game.callMeeting(ids[0]);
+    for (const id of ids) game.vote(id, id === s1 ? null : s1);
+    expect(roomLast("vote:result")).toMatchObject({ ejectedId: s1, wasBluffer: false });
+    expect(game.isAlive(s1)).toBe(false);
+    advance(6_000);
+    game.tick();
+    expect(game.over).toBe(false);
+    expect(game.phase).toBe("playing");
+    expect(respawned.at(-1)).toHaveLength(3);
+    expect(() => game.vote(s1, null)).toThrow();
+  });
+
+  it("a meeting ends when time runs out, and ejected players can't vote or chat", () => {
+    const { game, byRole, toButton, roomLast, advance, ids } = setup();
+    toButton(ids[0]);
+    game.callMeeting(ids[0]);
+    game.vote(ids[0], ids[1]);
+    advance(90_000);
+    game.tick();
+    expect(roomLast("vote:result").ejectedId).toBe(ids[1]);
+    expect(() => game.chat(ids[1], "hello")).toThrow();
+    void byRole;
+  });
+
+  it("the Bluffer wins once only they and one classmate are left", () => {
+    const { game, byRole, toButton, advance } = setup();
+    const b = byRole("bluffer")[0];
+    const innocents = [...byRole("student"), ...byRole("factChecker")];
+    for (let round = 0; round < 2; round++) {
+      const caller = innocents.find((id) => game.isAlive(id) && game.meetingCallsLeft()[id] > 0)!;
+      toButton(caller);
+      game.callMeeting(caller);
+      const victim = innocents.find((id) => game.isAlive(id))!;
+      for (const id of game.aliveIds()) game.vote(id, victim);
+      advance(6_000);
+      game.tick();
+    }
+    expect(game.gameOver()?.winner).toBe("bluffer");
+    expect(game.isAlive(b)).toBe(true);
+  });
+
+  it("a disconnect during a meeting doesn't hold up the vote", () => {
+    const { game, toButton, roomLast, ids } = setup();
+    toButton(ids[0]);
+    game.callMeeting(ids[0]);
+    game.vote(ids[0], null);
+    game.vote(ids[1], null);
+    game.vote(ids[2], null);
+    game.removePlayer(ids[3]);
+    expect(roomLast("vote:result")?.ejectedId ?? null).toBeNull();
   });
 });

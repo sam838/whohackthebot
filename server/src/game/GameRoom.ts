@@ -4,27 +4,37 @@
 
 import {
   BLUFFER_MAX_PIECES,
+  CHAT_MAX_LENGTH,
   DOUBLE_CHECK_COST_SECONDS,
   HACK_COOLDOWN_SECONDS,
   INTERACT_RADIUS,
+  MEETING_CALLS_PER_PLAYER,
+  MEETING_SECONDS,
   QUESTION_SECONDS,
   QUESTIONS_PER_CLASSMATE,
+  VOTE_RESULT_SECONDS,
 } from "@whtb/shared/constants";
 import type { ServerToClientEvents } from "@whtb/shared/events";
-import { distance } from "@whtb/shared/geometry";
+import { distance, nearMeetingButton } from "@whtb/shared/geometry";
 import { TERMINALS, type Point } from "@whtb/shared/map";
 import { PICKUP_RADIUS, PIECE_ROOMS, PIECE_SPOTS } from "@whtb/shared/pieces";
 import { QUESTIONS, type Question } from "@whtb/shared/questions";
 import type { AnswerOutcome, ArrangeCard, ErrorCode, GameOver, PieceInfo, Role } from "@whtb/shared/types";
-import { assignRoles, checkWinner, shuffle, type Random, type WinResult } from "./rules";
+import { assignRoles, checkWinner, shuffle, tallyVotes, type Random, type WinResult } from "./rules";
+
+/** Where the game is between start and game over. */
+export type GamePhase = "playing" | "meeting" | "voteResult";
 
 type Event = keyof ServerToClientEvents;
 type Payload<E extends Event> = Parameters<ServerToClientEvents[E]>[0];
 
 export interface Sender {
   toPlayer<E extends Event>(playerId: string, event: E, payload: Payload<E>): void;
+  toRoom<E extends Event>(event: E, payload: Payload<E>): void;
   /** Called whenever public state (strikes, progress, alive, phase) changes. */
   publicChanged(): void;
+  /** After a meeting: put living players back on their classroom seats. */
+  respawn(playerIds: string[]): void;
 }
 
 /** A piece is on the floor at its home spot, in someone's bag, or used up. */
@@ -74,6 +84,11 @@ export class GameRoom {
   private hacked = new Set<string>();
   private hackReadyAt = 0;
   private verifyUsed = false;
+  private meetingCalls = new Map<string, number>();
+  private votes = new Map<string, string | null>();
+  private phaseEndsAt = 0;
+  phase: GamePhase = "playing";
+  meetingCallerId: string | undefined;
   strikes = 0;
   result: WinResult | undefined;
 
@@ -86,6 +101,7 @@ export class GameRoom {
   ) {
     this.roles = assignRoles(playerIds, random);
     this.alive = new Set(playerIds);
+    playerIds.forEach((id) => this.meetingCalls.set(id, MEETING_CALLS_PER_PLAYER));
     const classmates = playerIds.length - 1;
     this.questions = shuffle(QUESTIONS, random).slice(0, classmates * QUESTIONS_PER_CLASSMATE);
 
@@ -129,6 +145,22 @@ export class GameRoom {
     return this.alive.has(id);
   }
 
+  aliveIds(): string[] {
+    return [...this.alive];
+  }
+
+  votedIds(): string[] {
+    return this.phase === "meeting" ? [...this.votes.keys()] : [];
+  }
+
+  meetingCallsLeft(): Record<string, number> {
+    return Object.fromEntries(this.meetingCalls);
+  }
+
+  phaseMsLeft(): number | undefined {
+    return this.phase === "playing" ? undefined : Math.max(0, this.phaseEndsAt - this.now());
+  }
+
   private blufferId(): string {
     return [...this.roles].find(([, r]) => r === "bluffer")![0];
   }
@@ -159,6 +191,13 @@ export class GameRoom {
     return role;
   }
 
+  /** Terminal and piece actions only happen while everyone is walking around. */
+  private requirePlaying(playerId: string): Role {
+    const role = this.requireLiving(playerId);
+    if (this.phase !== "playing") throw new ActionError("NOT_ALLOWED", "Not during a meeting.");
+    return role;
+  }
+
   private terminalNear(playerId: string, terminalId: string): boolean {
     const t = TERMINALS.find((x) => x.id === terminalId);
     const pos = this.positionOf(playerId);
@@ -175,7 +214,7 @@ export class GameRoom {
   }
 
   pickUp(playerId: string, pieceId: string): void {
-    const role = this.requireLiving(playerId);
+    const role = this.requirePlaying(playerId);
     const piece = this.pieces.get(pieceId);
     if (!piece || piece.used || piece.holderId) return;
     const pos = this.positionOf(playerId);
@@ -208,7 +247,7 @@ export class GameRoom {
   }
 
   openTerminal(playerId: string, terminalId: string): void {
-    const role = this.requireLiving(playerId);
+    const role = this.requirePlaying(playerId);
     this.requireNear(playerId, terminalId);
     if (this.open.has(playerId)) return;
 
@@ -327,7 +366,7 @@ export class GameRoom {
   }
 
   hack(playerId: string, terminalId: string): void {
-    const role = this.requireLiving(playerId);
+    const role = this.requirePlaying(playerId);
     if (role !== "bluffer") throw new ActionError("NOT_ALLOWED", "Only the Bluffer can hack.");
     this.requireNear(playerId, terminalId);
     const waitMs = this.hackReadyAt - this.now();
@@ -378,22 +417,92 @@ export class GameRoom {
     this.open.delete(playerId);
   }
 
-  /** Called on a timer: time out terminals past their deadline. */
+  // --- Meetings (prd.md > Meetings and Voting) ---
+
+  callMeeting(playerId: string): void {
+    this.requirePlaying(playerId);
+    const pos = this.positionOf(playerId);
+    if (!pos || !nearMeetingButton(pos)) throw new ActionError("TOO_FAR", "Walk to the meeting button in the classroom.");
+    if ((this.meetingCalls.get(playerId) ?? 0) <= 0) throw new ActionError("NOT_ALLOWED", "You already used your meeting.");
+    this.meetingCalls.set(playerId, this.meetingCalls.get(playerId)! - 1);
+    // Everyone stops what they're doing; open terminals close with nothing lost.
+    this.open.clear();
+    this.votes.clear();
+    this.phase = "meeting";
+    this.meetingCallerId = playerId;
+    this.phaseEndsAt = this.now() + MEETING_SECONDS * 1000;
+    this.send.publicChanged();
+  }
+
+  chat(playerId: string, rawText: unknown): void {
+    this.requireLiving(playerId);
+    if (this.phase !== "meeting") throw new ActionError("NOT_ALLOWED", "Chat opens during meetings.");
+    const text = typeof rawText === "string" ? rawText.trim().slice(0, CHAT_MAX_LENGTH) : "";
+    if (!text) return;
+    this.send.toRoom("chat:message", { fromId: playerId, text });
+  }
+
+  vote(playerId: string, targetId: string | null): void {
+    this.requireLiving(playerId);
+    if (this.phase !== "meeting") throw new ActionError("NOT_ALLOWED", "You can only vote in a meeting.");
+    if (this.votes.has(playerId)) throw new ActionError("NOT_ALLOWED", "You already voted.");
+    if (targetId !== null && !this.alive.has(targetId)) throw new ActionError("NOT_ALLOWED", "That player is not in the meeting.");
+    this.votes.set(playerId, targetId);
+    this.send.publicChanged();
+    if ([...this.alive].every((id) => this.votes.has(id))) this.endMeeting();
+  }
+
+  private endMeeting(): void {
+    const { ejectedId, counts } = tallyVotes(this.votes);
+    const wasBluffer = ejectedId !== null && this.roles.get(ejectedId) === "bluffer";
+    if (ejectedId) this.eject(ejectedId);
+    this.phase = "voteResult";
+    this.phaseEndsAt = this.now() + VOTE_RESULT_SECONDS * 1000;
+    this.send.toRoom("vote:result", { ejectedId, wasBluffer, counts });
+    this.send.publicChanged();
+  }
+
+  /** After the result has been on screen: game over, or back to class. */
+  private endVoteResult(): void {
+    this.votes.clear();
+    this.meetingCallerId = undefined;
+    this.phase = "playing";
+    this.checkWin();
+    if (this.over) return;
+    this.send.respawn(this.aliveIds());
+    this.send.publicChanged();
+  }
+
+  /** Called on a timer: time out terminals and meetings. */
   tick(): void {
     const now = this.now();
+    if (this.over) return;
+    if (this.phase === "meeting" && now >= this.phaseEndsAt) return this.endMeeting();
+    if (this.phase === "voteResult" && now >= this.phaseEndsAt) return this.endVoteResult();
     for (const [playerId, q] of [...this.open]) {
       if (now >= q.deadline) this.answer(playerId, null);
     }
   }
 
-  /** A player left or was voted out: their pieces go back where they were found. */
-  removePlayer(playerId: string): void {
-    if (!this.alive.delete(playerId)) return;
+  /** Voted out: out of play, and their pieces go back where they were found. */
+  private eject(playerId: string): void {
+    this.alive.delete(playerId);
     this.open.delete(playerId);
+    this.votes.delete(playerId);
     for (const p of this.pieces.values()) if (p.holderId === playerId) p.holderId = undefined;
     this.sendFloor();
+  }
+
+  /** A player disconnected: same as being voted out, and the game checks for a winner right away. */
+  removePlayer(playerId: string): void {
+    if (!this.alive.has(playerId)) return;
+    this.eject(playerId);
     this.send.publicChanged();
     this.checkWin();
+    // Their missing vote shouldn't hold up a meeting.
+    if (!this.over && this.phase === "meeting" && this.alive.size > 0 && [...this.alive].every((id) => this.votes.has(id))) {
+      this.endMeeting();
+    }
   }
 
   private checkWin(): void {

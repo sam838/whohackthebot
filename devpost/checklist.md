@@ -59,7 +59,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: In 4 windows, have two Students collect pieces, meet at one terminal, and build a question from the shared pool. As the Bluffer, grab 2 pieces and check that you can't take a third. Leave a window with pieces in hand and watch them reappear on the floor.
   Commit: `Share question pieces and team up at terminals`
 
-- [ ] **4. Call a meeting and kick the Bluffer out of school**
+- [x] **4. Call a meeting and kick the Bluffer out of school**
   Becomes usable: Near the classroom button, any living player can call a meeting (once each). Everyone switches to the Meeting screen with text chat and voting (vote or skip, 90s). The result says who was kicked out and whether they were the Bluffer. Ejected or disconnected players become spectators. All four win conditions work. The Game Over screen reveals every role and returns to the menu.
   Why now: Completes the core loop and the demo moment ("The bluffer get caught then kicked out from school") right after the kernel.
   PRD ref: `prd.md > Meetings and Voting`, `prd.md > Win and Game Over`, `prd.md > States and Boundaries`
@@ -136,3 +136,4 @@ Activity mode: [not started]
 - Added slice 3c (shared pieces, pooling at a terminal, Bluffer can hoard up to 2, leavers' pieces return home, class question board instead of personal tasks) — after trying 3b the learner chose a teamwork puzzle; PRD `Question Pieces`, spec `Question Pieces (server + client)` and events updated. Verify stays TRUE/FALSE.
 - Added a Leave button (and Esc) to the terminal panel, with a `terminal:close` event — the learner found there was no way to back out of a terminal. Leaving costs nothing (no strike, no progress, pieces kept); a hack that was already used up by opening stays used.
 - The Bluffer now handles pieces exactly like everyone (pick up max 2, pooled, can arrange and answer; no strikes from their own answers; no fake questions) — the learner found that a Bluffer whose pieces never pool, or who can't pick up, is always exposed by a 1-on-1 terminal test. Replaces the earlier fake-question and hoard-only behavior.
+- Replaced the temporary `hud/GameOverNotice.tsx` with `screens/GameOver.tsx`; added a `room:leave` event (Back to menu) and `game:respawn` (seats after a meeting) not listed in the spec event table. Meeting/vote-result are sub-phases of a playing game (`GamePhase`), and the vote result stays on screen 6 seconds before a game-over check so the "kicked out" moment is seen.

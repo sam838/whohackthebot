@@ -25,6 +25,28 @@ export function assignRoles(playerIds: readonly string[], random: Random): Map<s
   return roles;
 }
 
+export interface Tally {
+  ejectedId: string | null;
+  counts: Record<string, number>;
+}
+
+/**
+ * Counts votes (null = skip). The player with the most votes is kicked out;
+ * a tie for the top, or skip having as many votes as the leader, ejects nobody.
+ */
+export function tallyVotes(votes: ReadonlyMap<string, string | null>): Tally {
+  const counts: Record<string, number> = { skip: 0 };
+  for (const target of votes.values()) {
+    const key = target ?? "skip";
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  const players = Object.entries(counts).filter(([k]) => k !== "skip");
+  const top = Math.max(0, ...players.map(([, n]) => n));
+  const leaders = players.filter(([, n]) => n === top);
+  const ejectedId = top > 0 && leaders.length === 1 && top > counts.skip ? leaders[0][0] : null;
+  return { ejectedId, counts };
+}
+
 export interface WinInput {
   strikes: number;
   blufferAlive: boolean;

@@ -6,7 +6,7 @@ import type { PieceInfo } from "@whtb/shared/types";
 import { useRef } from "react";
 import type { Group } from "three";
 import { socket } from "../net/socket";
-import { panelOpen, useGame } from "../net/store";
+import { amAlive, panelOpen, useGame } from "../net/store";
 import type { Body } from "./useMovement";
 
 /** A small number from a piece id, so each scrap lies at its own fixed angle. */
@@ -51,7 +51,7 @@ export function Pieces3D({ me }: { me: React.RefObject<Body> }) {
 
   useFrame(() => {
     const s = useGame.getState();
-    if (panelOpen(s) || s.gameOver) return;
+    if (panelOpen(s) || s.gameOver || s.game?.phase !== "playing" || !amAlive(s)) return;
     if (s.role === "bluffer" && s.bag.length >= BLUFFER_MAX_PIECES) return;
     for (const p of s.pieces) {
       if (requested.current.has(p.id)) continue;

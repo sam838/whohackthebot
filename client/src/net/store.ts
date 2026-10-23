@@ -8,9 +8,10 @@ import type {
   PieceInfo,
   Role,
   TerminalQuestion,
+  VoteResult,
 } from "@whtb/shared/types";
 import { create } from "zustand";
-import { applyPositions } from "../game/positions";
+import { applyPositions, localPlayer } from "../game/positions";
 import { socket } from "./socket";
 
 export type Screen = "menu" | "join" | "lobby" | "playing";
@@ -58,6 +59,11 @@ interface GameStore {
   gameOver: GameOver | undefined;
   /** Updated by the scene when the local player walks in/out of reach. */
   nearTerminal: string | undefined;
+  nearButton: boolean;
+  chat: { fromId: string; text: string }[];
+  voteResult: VoteResult | undefined;
+  /** Who this player voted for in the current meeting (null = skip). */
+  myVote: string | null | undefined;
   setMenuScreen: (s: "menu" | "join") => void;
   clearError: () => void;
 }
@@ -73,7 +79,11 @@ const freshGame = {
   hackReadyAt: 0,
   gameOver: undefined,
   nearTerminal: undefined,
+  nearButton: false,
   notice: undefined,
+  chat: [],
+  voteResult: undefined,
+  myVote: undefined,
 };
 
 export const useGame = create<GameStore>((set) => ({
@@ -92,6 +102,18 @@ export function currentScreen(s: GameStore): Screen {
   if (s.game) return "playing";
   if (s.lobby) return "lobby";
   return s.menuScreen;
+}
+
+export function amAlive(s: Pick<GameStore, "game" | "myId">): boolean {
+  return s.game?.players.find((p) => p.id === s.myId)?.alive ?? true;
+}
+
+/** Leave the room and go back to the main menu. */
+export function leaveRoom() {
+  socket.emit("room:leave");
+  useGame.setState({ lobby: undefined, game: undefined, menuScreen: "menu", error: undefined, ...freshGame });
+  // Drop a share-link room code so the menu shows Create / Join again.
+  if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
 }
 
 /** Walk away from the terminal panel without answering. */
@@ -120,7 +142,21 @@ socket.on("disconnect", () =>
   useGame.setState({ connected: false, lobby: undefined, game: undefined, ...freshGame }),
 );
 socket.on("lobby:state", (lobby) => useGame.setState({ lobby, game: undefined, error: undefined, ...freshGame }));
-socket.on("game:state", (game) => useGame.setState({ game, lobby: undefined }));
+socket.on("game:state", (game) => {
+  const before = useGame.getState().game?.phase;
+  if (game.phase === "meeting" && before !== "meeting") {
+    // A meeting starts: terminals close and a fresh discussion begins.
+    useGame.setState({ chat: [], myVote: undefined, voteResult: undefined, arrange: undefined, question: undefined });
+  }
+  useGame.setState({ game, lobby: undefined });
+});
+socket.on("chat:message", (m) => useGame.setState((s) => ({ chat: [...s.chat, m] })));
+socket.on("vote:result", (voteResult) => useGame.setState({ voteResult }));
+socket.on("game:respawn", ({ seats }) => {
+  const me = useGame.getState().myId;
+  const seat = me ? seats[me] : undefined;
+  if (seat) localPlayer.teleport?.(seat.x, seat.z);
+});
 socket.on("positions", applyPositions);
 socket.on("error", (error) => {
   useGame.setState({ error });

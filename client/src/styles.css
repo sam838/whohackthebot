@@ -839,6 +839,201 @@ body {
   font-weight: 700;
 }
 
+/* Meetings, vote result, game over */
+.action.meeting {
+  background: var(--strike);
+  color: #fff;
+}
+
+.spectator {
+  position: fixed;
+  left: 50%;
+  top: 110px;
+  transform: translateX(-50%);
+  background: rgba(43, 36, 64, 0.85);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 14px;
+  max-width: calc(100% - 32px);
+  text-align: center;
+}
+
+.meeting-backdrop {
+  background: rgba(229, 72, 77, 0.35);
+}
+
+.meeting {
+  width: min(480px, 100%);
+}
+
+.meeting-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meeting-caller {
+  margin: -8px 0 0;
+  font-weight: 700;
+  color: var(--strike);
+}
+
+.chat-log {
+  height: 150px;
+  overflow-y: auto;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.chat-line {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.chat-empty {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px;
+  padding: 8px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.voters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.voter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 15px var(--body);
+  color: var(--ink);
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 8px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+  min-width: 0;
+}
+
+.voter:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.voter.picked {
+  background: var(--strike);
+  color: #fff;
+  opacity: 1;
+}
+
+.voter.skip {
+  justify-content: center;
+}
+
+.voted {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--progress);
+}
+
+.vote-result {
+  text-align: center;
+  justify-items: center;
+}
+
+.vote-result.caught {
+  background: #dcf5e6;
+}
+
+.ejected-dot {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 4px solid var(--ink);
+}
+
+.verdict {
+  margin: 0;
+  font-size: 18px;
+}
+
+.tally {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.game-over {
+  text-align: center;
+}
+
+.game-over.class-won {
+  background: #dcf5e6;
+}
+
+.game-over.bluffer-won {
+  background: #ffdede;
+}
+
+.reason {
+  margin: -6px 0 4px;
+  font-weight: 700;
+}
+
+.role-tag {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.role-tag.role-bluffer {
+  background: var(--strike);
+}
+
+.role-tag.role-factChecker {
+  background: var(--progress);
+}
+
+.players li.is-bluffer {
+  border-color: var(--strike);
+}
+
 .pool-note {
   margin: -6px 0 0;
   font-size: 13px;

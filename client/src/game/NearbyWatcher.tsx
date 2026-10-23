@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { nearestTerminal } from "@whtb/shared/geometry";
+import { nearMeetingButton, nearestTerminal } from "@whtb/shared/geometry";
 import { useGame } from "../net/store";
 import type { Body } from "./useMovement";
 
@@ -10,7 +10,9 @@ import type { Body } from "./useMovement";
 export function NearbyWatcher({ me }: { me: React.RefObject<Body> }) {
   useFrame(() => {
     const id = nearestTerminal(me.current)?.id;
-    if (id !== useGame.getState().nearTerminal) useGame.setState({ nearTerminal: id });
+    const button = nearMeetingButton(me.current);
+    const s = useGame.getState();
+    if (id !== s.nearTerminal || button !== s.nearButton) useGame.setState({ nearTerminal: id, nearButton: button });
   });
   return null;
 }
