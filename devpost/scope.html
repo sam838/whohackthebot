@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classroom Bluffer Scope</title>
+<style>
+/* Layout: one readable column; diagram first, then the plan in expandable sections. Companion to scope.md (canonical). */
+:root {
+  --bg: #f3f5f1;
+  --surface: #ffffff;
+  --ink: #1d2a2a;
+  --muted: #5d6e6a;
+  --line: #c9d3cf;
+  --accent: #b9860f;
+  --accent-soft: #fbf1d6;
+  --bluff: #c2412f;
+  --bluff-soft: #fbe5e1;
+  --truth: #2f8a5f;
+  --truth-soft: #e0f3e9;
+  --node: #e8eeeb;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b2524; --surface: #243231; --ink: #eef0e6; --muted: #a3b5ae; --line: #3d5553;
+    --accent: #f2c14e; --accent-soft: #3a3320; --bluff: #ec6f5e; --bluff-soft: #3d2622;
+    --truth: #7fd1a8; --truth-soft: #1f3a2e; --node: #2e403f; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; padding: 32px 16px 64px; }
+main { max-width: 860px; margin: 0 auto; display: grid; gap: 28px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.1; margin: 6px 0 8px; text-wrap: balance; }
+h2 { font-size: 21px; margin: 0; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 65ch; }
+.status { display: inline-block; font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--ink); border: 1px solid var(--accent); }
+
+.kernel { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 18px 20px; display: grid; gap: 8px; }
+.kernel p { max-width: 68ch; }
+
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; }
+.diagram .scroll { overflow-x: auto; }
+.diagram svg { display: block; min-width: 720px; width: 100%; height: auto; }
+.n rect { fill: var(--node); stroke: var(--line); stroke-width: 1.5; }
+.n text { fill: var(--ink); font: 600 13px var(--body); }
+.n.bad rect { fill: var(--bluff-soft); stroke: var(--bluff); }
+.n.good rect { fill: var(--truth-soft); stroke: var(--truth); }
+.n.star rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.n.role rect { stroke-dasharray: 5 4; }
+.e { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+.e.bad { stroke: var(--bluff); stroke-dasharray: 6 4; }
+.lbl { fill: var(--muted); font: 12px var(--body); }
+.lbl.bad { fill: var(--bluff); }
+.arrow { fill: var(--muted); }
+.arrow-bad { fill: var(--bluff); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1.5px solid; }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+summary { cursor: pointer; padding: 14px 18px; font-weight: 700; display: flex; justify-content: space-between; gap: 12px; }
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+summary .hint { font-weight: 400; color: var(--muted); font-size: 14px; }
+details > div { padding: 0 18px 16px; display: grid; gap: 10px; max-width: 72ch; }
+ul, ol { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
+blockquote { margin: 0; padding: 10px 14px; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; font-weight: 600; }
+
+.buckets { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.bucket { border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.bucket summary { font-size: 17px; }
+.bucket.now { border-top: 4px solid var(--truth); }
+.bucket.later { border-top: 4px solid var(--accent); }
+.bucket.cut { border-top: 4px solid var(--bluff); }
+.bucket li b { display: block; }
+.bucket li span { color: var(--muted); font-size: 14px; }
+a { color: var(--accent); }
+.foot { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Scope · Build With AI: Basics</div>
+    <h1>Classroom Bluffer <span style="font-weight:400;color:var(--muted);font-size:.55em">(working title)</span></h1>
+    <p class="lede">A multiplayer social deduction game set in a school, where the class's AI study assistant might be lying, and one classmate is the reason why.</p>
+    <p style="margin-top:10px"><span class="status">status: approved</span></p>
+  </header>
+
+  <section class="kernel" aria-label="The unique kernel">
+    <div class="eyebrow">The unique kernel</div>
+    <p>The class shares <b>Study-Bot</b>, an AI that always answers confidently. One player, the <b>Bluffer</b>, can secretly make it lie. Every task is a small moment of deciding whether to <b>trust a confident AI or double-check it</b>. Players learn to doubt AI answers by losing to a liar, not by being lectured.</p>
+  </section>
+
+  <section class="diagram" aria-label="Core loop diagram">
+    <h2>The core loop</h2>
+    <div class="scroll">
+      <svg viewBox="0 0 800 560" role="img" aria-label="Players join and walk to a Study-Bot terminal. Study-Bot answers. The player trusts it or double-checks. A trusted lie is a strike; a true or checked answer adds class progress and leads to the next task. The Bluffer corrupts terminals. Anyone can call a meeting; the Fact-Checker can prove a lie. The class votes, and if they pick the Bluffer, the Bluffer is kicked out of school.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-bad" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+
+        <!-- edges -->
+        <path class="e" d="M170,48 H206" marker-end="url(#ar)"/>
+        <path class="e" d="M360,48 H396" marker-end="url(#ar)"/>
+        <path class="e bad" d="M610,48 H554" marker-end="url(#arb)"/>
+        <text class="lbl bad" x="557" y="96">corrupts</text>
+        <text class="lbl bad" x="557" y="110">(cooldown)</text>
+        <path class="e" d="M475,76 V108 H375 V136" marker-end="url(#ar)"/>
+        <path class="e" d="M475,76 V108 H575 V136" marker-end="url(#ar)"/>
+        <path class="e" d="M375,196 V256" marker-end="url(#ar)"/>
+        <text class="lbl bad" x="383" y="232">it was a lie</text>
+        <path class="e" d="M450,168 H480 V288 H496" marker-end="url(#ar)"/>
+        <text class="lbl" x="484" y="238">true</text>
+        <path class="e" d="M575,196 V256" marker-end="url(#ar)"/>
+        <text class="lbl" x="583" y="232">safe</text>
+        <path class="e" d="M650,288 H785 V8 H285 V16" marker-end="url(#ar)"/>
+        <text class="lbl" x="700" y="280">next task</text>
+        <path class="e" d="M375,316 V376" marker-end="url(#ar)"/>
+        <text class="lbl" x="383" y="350">anyone calls</text>
+        <text class="lbl" x="383" y="364">a meeting</text>
+        <path class="e" d="M95,316 V345 H335 V376" marker-end="url(#ar)"/>
+        <text class="lbl" x="104" y="338">proves a lie, without getting exposed</text>
+        <path class="e" d="M300,408 H264" marker-end="url(#ar)"/>
+        <path class="e" d="M185,436 V486" marker-end="url(#ar)"/>
+        <text class="lbl" x="193" y="466">they picked the Bluffer</text>
+
+        <!-- nodes -->
+        <g class="n"><rect x="20" y="20" width="150" height="56" rx="10"/><text x="95" y="44" text-anchor="middle">Join on own phone</text><text x="95" y="62" text-anchor="middle" style="font-weight:400">secret roles</text></g>
+        <g class="n"><rect x="210" y="20" width="150" height="56" rx="10"/><text x="285" y="44" text-anchor="middle">Walk the 2D</text><text x="285" y="62" text-anchor="middle">school</text></g>
+        <g class="n"><rect x="400" y="20" width="150" height="56" rx="10"/><text x="475" y="44" text-anchor="middle">Study-Bot answers</text><text x="475" y="62" text-anchor="middle" style="font-weight:400">always confident</text></g>
+        <g class="n bad role"><rect x="610" y="20" width="150" height="56" rx="10"/><text x="685" y="44" text-anchor="middle">Bluffer</text><text x="685" y="62" text-anchor="middle" style="font-weight:400">fakes tasks</text></g>
+        <g class="n"><rect x="300" y="140" width="150" height="56" rx="10"/><text x="375" y="164" text-anchor="middle">Trust it</text><text x="375" y="182" text-anchor="middle" style="font-weight:400">fast</text></g>
+        <g class="n"><rect x="500" y="140" width="150" height="56" rx="10"/><text x="575" y="164" text-anchor="middle">Double-check</text><text x="575" y="182" text-anchor="middle" style="font-weight:400">costs time</text></g>
+        <g class="n bad"><rect x="300" y="260" width="150" height="56" rx="10"/><text x="375" y="284" text-anchor="middle">Strike</text><text x="375" y="302" text-anchor="middle" style="font-weight:400">Bluffer wins at enough</text></g>
+        <g class="n good"><rect x="500" y="260" width="150" height="56" rx="10"/><text x="575" y="284" text-anchor="middle">Class progress</text><text x="575" y="302" text-anchor="middle" style="font-weight:400">students win at enough</text></g>
+        <g class="n good role"><rect x="20" y="260" width="150" height="56" rx="10"/><text x="95" y="284" text-anchor="middle">Fact-Checker</text><text x="95" y="302" text-anchor="middle" style="font-weight:400">verifies for certain</text></g>
+        <g class="n"><rect x="300" y="380" width="150" height="56" rx="10"/><text x="375" y="404" text-anchor="middle">Meeting</text><text x="375" y="422" text-anchor="middle" style="font-weight:400">who was where?</text></g>
+        <g class="n"><rect x="110" y="380" width="150" height="56" rx="10"/><text x="185" y="404" text-anchor="middle">Vote</text><text x="185" y="422" text-anchor="middle" style="font-weight:400">someone out</text></g>
+        <g class="n star"><rect x="85" y="490" width="200" height="56" rx="10"/><text x="185" y="514" text-anchor="middle">Bluffer kicked out</text><text x="185" y="532" text-anchor="middle">of school ★ demo moment</text></g>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--node);border-color:var(--line)"></i>Every player</span>
+      <span><i style="background:var(--bluff-soft);border-color:var(--bluff)"></i>Bluffer's side</span>
+      <span><i style="background:var(--truth-soft);border-color:var(--truth)"></i>Class's side</span>
+      <span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>The demo moment</span>
+      <span>Dashed border = secret role</span>
+    </div>
+  </section>
+
+  <details open>
+    <summary>Who it's for <span class="hint">the player</span></summary>
+    <div>
+      <p>Asian Gen Z players, especially in Indonesia, who play <b>Mobile Legends and Roblox</b> with friends and use AI chatbots for search, school, and entertainment. Today they mostly accept AI answers without checking. In the research you cited, up to ~51% accepted plausible wrong answers and only ~25% clicked through to sources.</p>
+      <p>A friend group that wants a quick game together, <b>each on their own phone</b>.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The core loop, step by step <span class="hint">6 steps · max 10 min</span></summary>
+    <div>
+      <ol>
+        <li>Friends join a game room from their own phones and get secret roles: <b>Students</b>, one <b>Bluffer</b>, and one <b>Fact-Checker</b>.</li>
+        <li>Players walk around a 2D school map to Study-Bot terminals in different rooms.</li>
+        <li>At a terminal, a school-subject or trivia question appears. Study-Bot answers confidently. The player <b>trusts it</b> (fast) or <b>double-checks</b> (costs time).</li>
+        <li>The Bluffer secretly corrupts terminals (with a cooldown) and fakes tasks. The Fact-Checker can verify an answer for certain but has to persuade the class without exposing themselves.</li>
+        <li>A trusted lie is a strike. Anyone can call a meeting, where players argue about who was where and vote someone out.</li>
+        <li>Students win by catching the Bluffer or finishing enough correct answers. The Bluffer wins through enough strikes.</li>
+      </ol>
+      <p><b>Why they come back:</b> the drama of accusing friends, alibis, and the satisfaction of catching the liar.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Inspiration &amp; identity <span class="hint">what it should feel like</span></summary>
+    <div>
+      <ul>
+        <li><b>Among Us:</b> walking a map, tasks in rooms, meetings, voting. Also the visual reference: 2D, Among Us–style art and camera.</li>
+        <li><b>Werewolf:</b> hidden roles, discussion, voting someone out.</li>
+        <li><b>Roblox Murder Mystery:</b> the Sheriff, which became the <b>Fact-Checker</b>.</li>
+        <li><b>Kahoot / Among Us room codes:</b> everyone joins from their own phone.</li>
+        <li>Must <b>not</b> feel like an "educational game." The learning is the gameplay.</li>
+        <li>Questions work best when <b>the wrong answer sounds right</b> (common misconceptions).</li>
+      </ul>
+      <p>Concept mockup: <a href="https://claude.ai/artifact/WskRuoWkQD8h5vN4o4ZNCK">Classroom Bluffer Sketch</a></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Why this matters to you <span class="hint">the personal stake</span></summary>
+    <div>
+      <p>You've been reading research that Gen Z's AI use can reduce critical thinking, and that Gen Z plays a lot of games. You want to meet players where they already are, with something that doesn't feel educational:</p>
+      <blockquote>"if this project successful I think it can be good impact"</blockquote>
+      <p>You also see a game with real walking as what makes you "a strong contender in this hackathon."</p>
+    </div>
+  </details>
+
+  <details open>
+    <summary>What "working" looks like <span class="hint">the finish line</span></summary>
+    <div>
+      <p>4–5 friends, each on their own phone, join the same game, walk around the 2D school, answer questions at Study-Bot terminals, and get burned or saved by trusting or checking. A meeting is called.</p>
+      <blockquote>The "oh, that's cool" moment: "The bluffer get caught then kicked out from school."</blockquote>
+    </div>
+  </details>
+
+  <section aria-label="Now, later, cut" style="display:grid;gap:12px">
+    <h2>Now · Later · Cut</h2>
+    <div class="buckets">
+      <details class="bucket now" open>
+        <summary>Now <span class="hint">POC boundary</span></summary>
+        <div><ul>
+          <li><b>One 2D school map</b><span>a few rooms, Among Us style; exact counts decided in the PRD</span></li>
+          <li><b>Real walking</b><span>synced live across phones</span></li>
+          <li><b>4–5 players</b><span>joining from their own devices</span></li>
+          <li><b>Roles</b><span>Students, one Bluffer, one Fact-Checker</span></li>
+          <li><b>Study-Bot terminals</b><span>pre-written questions, each with a plausible lie</span></li>
+          <li><b>Rules</b><span>trust/check, strikes, meetings, voting, win/lose; ≤10 minutes</span></li>
+          <li><b>Build order</b><span>trust mechanic first; movement kept simple</span></li>
+        </ul></div>
+      </details>
+      <details class="bucket later" open>
+        <summary>Later <span class="hint">worth it, not now</span></summary>
+        <div><ul>
+          <li><b>Multiple maps</b></li>
+          <li><b>2.5D or 3D visuals</b><span>possibly a Roblox version</span></li>
+          <li><b>More special roles</b></li>
+        </ul></div>
+      </details>
+      <details class="bucket cut" open>
+        <summary>Cut <span class="hint">with reasons</span></summary>
+        <div><ul>
+          <li><b>Solo puzzle formats</b><span>you judged them "just basic puzzle game," with no social element</span></li>
+          <li><b>Sharing one phone</b><span>everyone joins on their own device</span></li>
+          <li><b>Emotional support &amp; news topics</b><span>school subjects and trivia for now; too heavy for a casual game</span></li>
+          <li><b>3D in version one</b><span>would compete with the core mechanic for time</span></li>
+        </ul></div>
+      </details>
+    </div>
+  </section>
+
+  <p class="foot">Companion view of <code>devpost/scope.md</code>. The Markdown file is the canonical plan.</p>
+</main>
+</body>
+</html>

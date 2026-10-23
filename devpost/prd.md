@@ -1,0 +1,208 @@
+---
+doc: prd
+status: approved
+---
+
+# Who Hacked the Bot? — Product Requirements
+
+A multiplayer social deduction web game for Asian Gen Z friend groups. Players at a cartoon school rely on Study-Bot, an AI study assistant, while one secret classmate, the Bluffer, makes it lie.
+Source: `scope.md > The Unique Kernel`, `scope.md > Who It's For`.
+
+## The Core Journey
+Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
+
+1. A player opens the game link in their phone's browser and sees the **Main Menu**: their **avatar** (a rotating 3D preview they can customize) plus **Create Lobby** or **Join Friend**.
+2. **Create Lobby:** they enter a name and get a lobby with a **short room code** and a **share link**.
+3. **Join Friend:** friends either type the room code or tap the share link, which **joins the lobby automatically**. They enter a name.
+4. In the **Lobby**, everyone sees the code and the list of players. The host presses **Start** once at least **4 players** are in.
+5. **Role Reveal:** everyone appears seated in the classroom. Each player opens a book showing their character's picture and secret role: **Student**, **Bluffer**, or **Fact-Checker**. A "quick facts" box types out what the role does, with a typing sound.
+6. **Play:** players move with an on-screen **joystick** around a 2.5D cartoon school, visiting **Study-Bot terminals** in different rooms to complete their tasks.
+7. **At a terminal:** a timed multiple-choice question appears and Study-Bot confidently recommends one option. The player picks an answer, either trusting Study-Bot or using **Double-check** first.
+8. **Bluffer:** secretly hacks terminals so their next answer is a convincing lie, and pretends to do tasks.
+9. **Fact-Checker:** once per game, can verify whether Study-Bot's answer is TRUE or FALSE.
+10. A trusted lie adds a **strike**, shown to everyone. A correct answer adds class progress.
+11. Anyone can press the **meeting button in the classroom**. Everyone is brought to the classroom, argues in **text chat**, and **votes** someone out (or skips).
+12. Play continues after each meeting until someone wins:
+    - **Class wins:** the Bluffer is voted out ("kicked out of school"), or the class reaches the progress goal.
+    - **Bluffer wins:** the class reaches 3 strikes, or only the Bluffer and one other player remain.
+13. **Game Over** screen shows who won and reveals every role.
+
+**Success (the demo moment):** "The bluffer get caught then kicked out from school."
+
+## Screens and Layout
+
+| Screen | Purpose |
+|---|---|
+| **Main Menu** | Avatar preview and setup (character, color, name), Create Lobby / Join Friend |
+| **Join** | Enter room code and name (skipped when arriving via share link, apart from the name) |
+| **Lobby** | Room code, share link, player list, Start (host only) |
+| **Role Reveal** | Classroom → book opens → character picture, role name, typed quick facts |
+| **Game (map)** | Phone-sized view of the school with joystick, task list, strike count, class progress, action button |
+| **Terminal** | Question, timer, Study-Bot's recommendation, multiple-choice answers, Double-check, Verify (Fact-Checker), Hack (Bluffer) |
+| **Meeting** | Text chat, player list, vote buttons, skip vote |
+| **Vote Result** | Who was voted out and whether they were the Bluffer |
+| **Game Over** | Winner, all roles revealed, back to menu |
+
+The game is designed for **phone screens in portrait** (it's a phone-browser game) and also works in desktop browser windows for testing and the demo.
+
+## Look and Feel
+Source: `scope.md > Inspiration & Identity`.
+
+- **Common school, cartoon style.** Bright and friendly, recognizable as an everyday school (classroom, library, lab, canteen).
+- **Art style reference: Super Sus.** Cute, chunky cartoon characters with a soft, slightly 3D look, in bright colors. Version one is **2.5D**: real 3D models seen from a **fixed camera angle above that follows the player** (like Mobile Legends and Super Sus). The player never rotates the camera. Inspired by the style only: no Super Sus assets or characters.
+- **Do not copy Among Us.** The school setting and the book role reveal are the game's own identity.
+- **Role reveal:** opening a book in class; quick facts appear with a **typing animation and typing sound**, like Study-Bot writing.
+- Study-Bot should feel like a confident chatbot (chat-bubble style answers).
+- Must not feel like an "educational game." No lessons, no quizzes that look like school tests.
+
+## Features and Behavior
+
+### Avatar Setup
+*Added during `4-spec` at the learner's request.*
+- As a player, I want to set up my avatar on the home screen so friends recognize me in the school and in meetings.
+  - [ ] Main Menu shows my avatar as a slowly rotating 3D preview.
+  - [ ] I can choose one of 4–6 characters, a color, and my name.
+  - [ ] My choice is remembered on this device the next time I open the link.
+  - [ ] The chosen character and color appear on the role book, in the school, and in the meeting list.
+
+### Main Menu and Lobby
+- As a player, I want to create a lobby and share a code or link so my friends can join quickly.
+  - [ ] Main Menu shows **Create Lobby** and **Join Friend**.
+  - [ ] Creating a lobby shows a short room code and a copyable share link.
+  - [ ] Typing a valid code plus a name puts the player in that lobby's player list on every screen.
+  - [ ] Opening the share link asks only for a name, then joins that lobby automatically.
+  - [ ] **Start** is visible only to the host and enabled only at 4+ players. With fewer, it says how many more are needed.
+
+### Role Reveal
+- As a player, I want a dramatic, secret role reveal so the game starts with tension.
+  - [ ] Every player gets exactly one role: exactly 1 Bluffer, exactly 1 Fact-Checker, the rest Students.
+  - [ ] Each player sees only their own role.
+  - [ ] The book shows the player's character picture, role name, and quick facts typed out with sound.
+
+**Quick facts (draft wording, editable):**
+- **Student:** Answer questions at Study-Bot terminals. But careful: someone may have hacked it. Trust it, or double-check? *Win:* answer enough questions right, or vote out the hacker.
+- **Bluffer:** You hacked Study-Bot. Make terminals give convincing wrong answers, and blend in so nobody suspects you. *Win:* get the class to trust enough wrong answers.
+- **Fact-Checker:** You can see the truth, once. Use it to expose a lie, but stay hidden, because if the Bluffer knows who you are, you're a target. *Win:* same as Students.
+
+### Moving Around the School
+- [ ] An on-screen joystick moves the player's character. Other players are visible moving in real time.
+- [ ] The school has a few rooms, starting in the classroom. See **Assumptions to Confirm** for the room count.
+- [ ] A task list shows which terminals the player still needs to visit.
+- [ ] Strike count (e.g. "Strikes: 1/3") and class progress are always visible to everyone.
+
+### Study-Bot Terminals (the kernel)
+Source: `scope.md > The Unique Kernel`.
+- As a Student, I want Study-Bot to give me a confident answer so I have to decide whether to trust it.
+  - [ ] Walking up to a terminal shows an action button; tapping it opens the question.
+  - [ ] Each question is **multiple choice** with a visible countdown timer.
+  - [ ] Study-Bot recommends one option in a confident chat-bubble style.
+  - [ ] **Double-check** costs time on the timer and shows a hint that helps judge the answer.
+  - [ ] Picking the correct option adds class progress. Picking Study-Bot's corrupted recommendation adds **1 strike**, visible to everyone. Running out of time counts as a wrong answer.
+  - [ ] Questions are pre-written school-subject and trivia questions, each with a **plausible wrong answer** for when the terminal is hacked.
+
+### Bluffer: Hacking
+- [ ] At a terminal, the Bluffer sees a **Hack** action that only they can see.
+- [ ] A hacked terminal's next Study-Bot answer recommends the plausible wrong option, still sounding confident.
+- [ ] Hacking has a cooldown, so the Bluffer can't hack terminals back to back.
+- [ ] The Bluffer can open terminals and look busy like everyone else (fake tasks).
+
+### Fact-Checker: Verify
+- [ ] At a terminal, the Fact-Checker sees **Verify** while it's unused.
+- [ ] Verify shows **TRUE** or **FALSE** about Study-Bot's current recommendation.
+- [ ] Usable **once per game**; afterward it disappears.
+
+### Meetings and Voting
+- [ ] A **meeting button in the classroom** can be pressed by any living player.
+- [ ] Pressing it brings every player to the Meeting screen.
+- [ ] Meeting screen has a **text chat**, available only during meetings.
+- [ ] Each player votes for one player or skips. The result is shown to everyone.
+- [ ] A voted-out player is removed from play. The result says whether they were the Bluffer.
+- [ ] Players can claim any role in chat; the game never confirms roles until Game Over.
+
+### Win and Game Over
+- [ ] Class wins when the Bluffer is voted out ("kicked out of school") or class progress reaches the goal.
+- [ ] Bluffer wins at **3 strikes**, or when only the Bluffer and one other player remain.
+- [ ] Game Over shows the winning side, reveals every player's role, and offers a way back to the menu.
+- [ ] There is no game timer.
+
+## States and Boundaries
+- **Wrong room code:** Join shows a clear message that the room wasn't found, and lets the player try again.
+- **Too few players:** Start stays disabled with a "need X more players" message.
+- **Game already started:** someone joining by code or link is told the game is in progress.
+- **Player disconnects mid-game:** see **Assumptions to Confirm**.
+- **Voted-out player:** can no longer move, answer, vote, or chat (see assumptions for what they see).
+- **Avatar remembered on the device** (name, character, color). Nothing else persists between games. No accounts, no saved history.
+
+## Product Decisions
+- **Web game in the phone browser** — nothing to install, friends join instantly; Play Store later.
+- **Create/join lobby by code or share link, no public matchmaking** — "real online matchmaking will take too long to build in this hackathon."
+- **Minimum 4 players** — the smallest group with 1 Bluffer, 1 Fact-Checker, and 2 Students where a vote means something.
+- **Name: Who Hacked the Bot?** — the meeting question becomes the title.
+- **Demo with 4 browser windows side by side**, not 4 real people — viewers see every player's screen at once.
+- **Role reveal is the school's own**, not Among Us's: sitting in class, opening a book, typed quick facts with sound — "Do not copy it."
+- **Joystick movement** — chosen for phone play.
+- **Fact-Checker verifies once per game**, so the class doesn't stop thinking and rely on them like an AI.
+- **Multiple-choice, timed questions** for now.
+- **Strikes shown to everyone** — strike timing becomes evidence to argue about in meetings.
+- **No game timer, like Among Us** — the game ends only through win conditions.
+- **Bluffer wins when only they and one other remain** — prevents endless games without a timer.
+- **Text chat during meetings** — "for this build use chat first"; the demo can show the argument.
+- **Meeting button in the classroom** (the main room).
+- **Common school, cartoon style.**
+- **Art style like Super Sus** — cute, chunky cartoon characters your players already know.
+- **2.5D in version one** — after comparing 2D, 2.5D, and full 3D side by side (https://claude.ai/artifact/AH9VqGaLz1TYLjQgsdcAjY): "Lets make it 2.5 d for now." Looks like the mobile games players know (ML, Super Sus), keeps one-joystick controls, avoids free-camera problems. Full 3D moves to Later.
+- **Fixed camera that follows the player** — part of the 2.5D choice; walls that hide players may need to turn see-through.
+- **Avatar setup on the home screen** — 4–6 characters + color with a rotating 3D preview; helps players recognize each other in meetings. Remembered on the device.
+- **Device memory instead of Google sign-in** — "keep localstorage for now"; sign-in would add setup, a database, and a login before playing.
+- **Claims aren't verified** — anyone can claim a role, and nobody has to believe it.
+
+## Assumptions to Confirm
+Drafted by the agent as placeholders; the learner accepted them as drafted at approval ("For now i think thats good"). Tune during the build.
+- **Rooms:** 4 — Classroom (start + meeting button), Library, Science Lab, Canteen, with terminals in all but the Classroom.
+- **Players:** 4–5 (max 5, per scope).
+- **Tasks:** each player gets 3 terminal tasks; the class goal is enough correct answers to roughly match a ~10-minute game (tuned during build).
+- **Question timer:** about 20 seconds; Double-check costs about 8 seconds and shows a short hint or source line.
+- **Hack cooldown:** about 30 seconds.
+- **Meeting limit:** each player can call 1 meeting per game, so it can't be spammed. Meetings last about 60–90 seconds for chat and voting.
+- **Fact-Checker sees TRUE/FALSE only**, not the correct answer.
+- **Voted-out players** become spectators who can watch but not act.
+- **Disconnects:** a disconnected player is treated like a voted-out player; their role isn't revealed until Game Over.
+- **Characters:** superseded by **Avatar Setup** — chosen on the home screen, not in the lobby.
+- **Chat only during meetings.**
+
+## What We're Building
+- Main Menu, create/join lobby with room code and share link, lobby with host Start (4+ players).
+- Book-style role reveal with typed quick facts and typing sound.
+- One 2.5D cartoon school map (3D models, fixed follow camera) with joystick movement synced across players.
+- Study-Bot terminals with timed multiple-choice questions, Double-check, strikes, and class progress.
+- Bluffer hacking with cooldown; Fact-Checker verify once per game.
+- Meeting button, text chat, voting, vote result.
+- Win conditions and Game Over with role reveal.
+- A pre-written set of questions, each with a plausible lie and a hint.
+
+## Deferred From the POC
+- **Public matchmaking** — too long to build; friends join by code or link instead.
+- **Play Store / App Store release** — store accounts and review don't fit the hackathon; phone browser works now.
+- **Simple filler bots** — not needed; 4 browser windows cover testing and the demo.
+- **Voice chat** — text chat works for the demo.
+
+## Possible Later Enhancements
+- Google sign-in to save avatar and stats across devices.
+- Hats and accessories for avatars.
+- Multiple maps.
+- Full 3D with a free camera, possibly a Roblox version.
+- More special roles.
+- AI-generated questions and lies (instead of pre-written).
+- A real playtest with friends to tune balance.
+
+## Non-Goals
+- **Not an educational quiz app** — no lessons, scores, or teacher dashboards.
+- **No accounts, profiles, or saved history** — every game is fresh.
+- **No CPU opponents** — the fun is accusing real friends.
+- **No copying Among Us visuals or reveal** — school theme is the identity.
+- **No emotional support or news topics** — questions are school subjects and trivia.
+
+## Open Questions
+- **Fallback if 2.5D art isn't coming together** (e.g. simple bean-shape characters) — learner hasn't decided; raise in `4-spec`.
+- Timing and count values under **Assumptions to Confirm** — accepted for now, tune during the build.
+- Exact question content (10–20 questions with plausible lies and hints) — can be written during the build.

@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who Hacked the Bot? Spec</title>
+<style>
+/* Layout: one column. Architecture diagram, then a journey stepper (each step names files, events, PRD heading), then component reveals. Companion to spec.md (canonical). */
+:root {
+  --bg: #f3f5f1; --surface: #ffffff; --ink: #1d2a2a; --muted: #5d6e6a; --line: #c9d3cf;
+  --accent: #6b4fd8; --accent-soft: #ece7fd; --bluff: #c2412f; --bluff-soft: #fbe5e1;
+  --truth: #2f8a5f; --truth-soft: #e0f3e9; --node: #e8eeeb; --gold: #b9860f; --gold-soft: #fbf1d6;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b2524; --surface: #243231; --ink: #eef0e6; --muted: #a3b5ae; --line: #3d5553;
+    --accent: #a993ff; --accent-soft: #2f2847; --bluff: #ec6f5e; --bluff-soft: #3d2622;
+    --truth: #7fd1a8; --truth-soft: #1f3a2e; --node: #2e403f; --gold: #f2c14e; --gold-soft: #3a3320; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; padding: 32px 16px 64px; }
+main { max-width: 900px; margin: 0 auto; display: grid; gap: 28px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 6px 0 8px; text-wrap: balance; }
+h2 { font-size: 22px; margin: 0; }
+h3 { font-size: 14px; margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 66ch; }
+.status { display: inline-block; font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; background: var(--gold-soft); border: 1px solid var(--gold); margin-top: 10px; }
+code { font-family: var(--mono); font-size: .88em; background: var(--node); padding: 1px 5px; border-radius: 4px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 12px; }
+.plain p { max-width: 68ch; }
+.plain .big { font-size: 17px; }
+
+.scroll { overflow-x: auto; }
+svg.arch { display: block; min-width: 720px; width: 100%; height: auto; }
+.n rect { fill: var(--node); stroke: var(--line); stroke-width: 1.5; }
+.n text { fill: var(--ink); font: 600 13px var(--body); }
+.n .sub { font-weight: 400; fill: var(--muted); font-size: 12px; }
+.n.ref rect { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2.5; }
+.n.share rect { fill: var(--accent-soft); stroke: var(--accent); stroke-dasharray: 6 4; }
+.host { fill: none; stroke: var(--accent); stroke-width: 2; }
+.hostlbl { fill: var(--accent); font: 700 13px var(--body); }
+.e { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+.e.dash { stroke: var(--accent); stroke-dasharray: 5 4; }
+.lbl { fill: var(--muted); font: 12px var(--body); }
+.lbl.up { fill: var(--truth); }
+.lbl.down { fill: var(--bluff); }
+.arrow { fill: var(--muted); }
+
+.stepper { display: grid; gap: 14px; }
+.stepnav { display: flex; flex-wrap: wrap; gap: 6px; }
+.stepnav button { font: 600 13px var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+.stepnav button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stepnav button:focus-visible, .pager button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 12px; }
+.step.kernel { border: 2px solid var(--gold); }
+.step h3 { color: var(--accent); }
+.step .title { font-size: 19px; font-weight: 700; }
+.step .flow { display: grid; gap: 6px; padding-left: 0; list-style: none; margin: 0; }
+.step .flow li { padding-left: 22px; position: relative; }
+.step .flow li::before { content: "→"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 14px; }
+.meta div { background: var(--node); border-radius: 8px; padding: 8px 10px; min-width: 0; overflow-wrap: anywhere; }
+.meta b { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.private { color: var(--bluff); font-weight: 700; }
+.pager { display: flex; justify-content: space-between; gap: 8px; }
+.pager button { font: 600 14px var(--body); background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+.pager button:disabled { opacity: .35; cursor: default; }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+details.kernel { border: 2px solid var(--gold); }
+summary { cursor: pointer; padding: 13px 16px; font-weight: 700; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+summary .tag { font-weight: 400; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+details > div { padding: 0 16px 16px; display: grid; gap: 8px; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.comps { display: grid; gap: 8px; }
+
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+pre.tree { font-family: var(--mono); font-size: 13px; line-height: 1.45; margin: 0; background: var(--node); border-radius: 10px; padding: 14px; overflow-x: auto; }
+pre.tree .c { color: var(--muted); }
+.unknown { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; }
+.cmd { font-family: var(--mono); font-size: 14px; background: var(--node); border-radius: 8px; padding: 10px 12px; overflow-x: auto; white-space: pre; }
+.foot { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Technical spec · Build With AI: Basics</div>
+    <h1>Who Hacked the Bot?</h1>
+    <p class="lede">The blueprint: React + TypeScript + React Three Fiber in the browser, a Node + Socket.IO referee server, one Render service.</p>
+    <span class="status">status: approved</span>
+  </header>
+
+  <section class="card plain" aria-label="How this works in plain language">
+    <h2>How this works, in plain language</h2>
+    <p class="big">Two parts talk in real time. <b>The game page</b> runs in each player's browser and draws the 2.5D school. <b>The game server</b> is the referee: it holds the true game and tells each phone <b>only what that player may know</b>.</p>
+    <p>Phones never decide anything important. They say "I moved," "I picked B," or "I vote Kevin." The server checks it, updates the game, and replies. That's how roles stay secret, and why the correct answer never leaves the server early. The same server delivers the page, so it's <b>one program and one public URL</b>. Games live in memory and vanish when they end.</p>
+  </section>
+
+  <section class="card" aria-label="Architecture diagram">
+    <h2>The pieces</h2>
+    <div class="scroll">
+      <svg class="arch" viewBox="0 0 800 370" role="img" aria-label="Several phones, each running React and React Three Fiber, connect over Socket.IO to one Render web service. Inside it, Express serves the page, Socket.IO carries messages, rooms.ts manages lobbies, and GameRoom is the referee holding secret state. Phones send actions; the server sends back only what each player may know. A shared folder of types, events, map and questions is used by both sides.">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <text class="lbl" x="20" y="18">4–5 phones or browser windows</text>
+        <g class="n"><rect x="20" y="30" width="210" height="62" rx="10"/><text x="36" y="56">Phone · React + R3F</text><text class="sub" x="36" y="76">screens, 3D school, HUD</text></g>
+        <g class="n"><rect x="20" y="112" width="210" height="62" rx="10"/><text x="36" y="138">Phone · React + R3F</text><text class="sub" x="36" y="158">sees only its own role</text></g>
+        <g class="n"><rect x="20" y="194" width="210" height="62" rx="10"/><text x="36" y="220">Phone · React + R3F</text><text class="sub" x="36" y="240">moves locally, sends ~12×/s</text></g>
+
+        <path class="e" d="M230,61 H330 V150 H486" marker-end="url(#ar)"/>
+        <path class="e" d="M230,143 H486"/>
+        <path class="e" d="M230,225 H330 V150"/>
+        <text class="lbl up" x="250" y="132">→ actions: move · answer · hack · vote</text>
+        <text class="lbl down" x="250" y="172">← only what you may know</text>
+
+        <rect class="host" x="470" y="22" width="310" height="262" rx="14"/>
+        <text class="hostlbl" x="486" y="44">Render web service · one URL</text>
+        <g class="n"><rect x="490" y="56" width="270" height="44" rx="8"/><text x="504" y="83">Express <tspan class="sub">· serves the game page</tspan></text></g>
+        <g class="n"><rect x="490" y="110" width="270" height="44" rx="8"/><text x="504" y="137">Socket.IO <tspan class="sub">· live two-way messages</tspan></text></g>
+        <g class="n"><rect x="490" y="164" width="270" height="44" rx="8"/><text x="504" y="191">rooms.ts <tspan class="sub">· codes, join, host</tspan></text></g>
+        <g class="n ref"><rect x="490" y="218" width="270" height="52" rx="8"/><text x="504" y="240">GameRoom · the referee</text><text class="sub" x="504" y="258">roles, hacks, strikes, votes (secret)</text></g>
+
+        <g class="n share"><rect x="250" y="310" width="300" height="48" rx="10"/><text x="266" y="332">shared/</text><text class="sub" x="266" y="349">types · events · map · questions · constants</text></g>
+        <path class="e dash" d="M125,256 V334 H250"/>
+        <path class="e dash" d="M550,334 H625 V284"/>
+      </svg>
+    </div>
+  </section>
+
+  <section class="stepper" aria-label="Journey through the system">
+    <h2>The journey through the system</h2>
+    <p class="lede">Step through the PRD's core journey and see which files and messages handle each part.</p>
+    <div class="stepnav" id="stepnav" role="tablist" aria-label="Journey steps"></div>
+
+    <div class="step" data-title="Open + avatar">
+      <h3>Step 1</h3><div class="title">Open the link, set your avatar</div>
+      <ul class="flow"><li>Render serves the built page</li><li>Page connects to the same server with Socket.IO</li><li>Main Menu shows <b>your avatar</b> rotating in 3D, loaded from localStorage (or a default)</li><li>Change character, color, or name: saved on this device immediately</li></ul>
+      <div class="meta"><div><b>Files</b>server/src/index.ts · App.tsx · net/socket.ts · avatar/AvatarPreview, AvatarPicker, avatarStorage</div><div><b>Events</b>(connect)</div><div><b>PRD</b>Avatar Setup · Main Menu and Lobby</div></div>
+    </div>
+    <div class="step" data-title="Create / join">
+      <h3>Step 2–3</h3><div class="title">Create or join a lobby</div>
+      <ul class="flow"><li>Create: server makes a 4-letter code, you're host</li><li>Join: type the code, or the page reads <code>?room=ABCD</code> from the share link</li><li>Errors come back in plain words: not found, full, already started</li></ul>
+      <div class="meta"><div><b>Files</b>server/src/rooms.ts · screens/MainMenu, Join, Lobby</div><div><b>Events</b>lobby:create · lobby:join · lobby:state · error</div><div><b>PRD</b>Main Menu and Lobby · States and Boundaries</div></div>
+    </div>
+    <div class="step" data-title="Start + roles">
+      <h3>Step 4–5</h3><div class="title">Start, roles, the book</div>
+      <ul class="flow"><li>Host starts at 4–5 players</li><li>Server picks 1 Bluffer, 1 Fact-Checker, the rest Students, and assigns tasks</li><li>Each phone is told <span class="private">privately</span> its role and tasks</li><li>Book opens on tap; quick facts type out with Web Audio clicks</li></ul>
+      <div class="meta"><div><b>Files</b>game/rules.ts · GameRoom.ts · screens/RoleReveal.tsx · audio/typing.ts</div><div><b>Events</b>lobby:start · game:role <span class="private">(private)</span> · game:tasks <span class="private">(private)</span> · game:state</div><div><b>PRD</b>Role Reveal</div></div>
+    </div>
+    <div class="step" data-title="Walk">
+      <h3>Step 6</h3><div class="title">Walk the school</div>
+      <ul class="flow"><li>Joystick (phone) or WASD (desktop) moves you locally, walls block</li><li>Your position goes to the server ~12×/s</li><li>Server broadcasts everyone's positions; other characters glide there each frame</li><li>Positions live <b>outside React state</b>, applied in <code>useFrame</code></li></ul>
+      <div class="meta"><div><b>Files</b>game/useMovement.ts · positions.ts · Player.tsx · FollowCamera.tsx · hud/Joystick.tsx</div><div><b>Events</b>move · positions</div><div><b>PRD</b>Moving Around the School</div></div>
+    </div>
+    <div class="step kernel" data-title="Terminal ★">
+      <h3>Step 7–8 · the kernel</h3><div class="title">Study-Bot terminal</div>
+      <ul class="flow"><li>Near a terminal, tap Use; server checks you're close</li><li>Server picks a question and Study-Bot's pick: correct, or <b>the lie</b> if hacked</li><li>The phone gets prompt, choices, Study-Bot's pick, and a deadline, <b>but never the correct answer</b></li><li>Double-check: deadline −8s, hint shown · Verify (Fact-Checker, once): TRUE/FALSE · Hack (Bluffer): next answer lies, 30s cooldown</li><li>Answer: correct → task done, progress +1 · trusted lie → strike · other wrong or timeout → task stays</li></ul>
+      <div class="meta"><div><b>Files</b>terminal/TerminalPanel.tsx · GameRoom.ts · shared/questions.ts</div><div><b>Events</b>terminal:open · question <span class="private">(private)</span> · doubleCheck · hint · verify · hack · answer · result</div><div><b>PRD</b>Study-Bot Terminals · Bluffer: Hacking · Fact-Checker: Verify</div></div>
+    </div>
+    <div class="step" data-title="Meeting">
+      <h3>Step 9–10</h3><div class="title">Meeting, chat, vote</div>
+      <ul class="flow"><li>In the classroom near the button, tap Meeting (1 per player)</li><li>Everyone switches to the Meeting screen; chat works only now</li><li>Vote or skip; ends when all have voted or after 90s</li><li>Most votes is kicked out; a tie or skip means nobody. Result says if they were the Bluffer</li></ul>
+      <div class="meta"><div><b>Files</b>screens/Meeting.tsx · VoteResult.tsx · rules.ts (tally)</div><div><b>Events</b>meeting:call · chat:send · chat:message · vote:cast · vote:result</div><div><b>PRD</b>Meetings and Voting</div></div>
+    </div>
+    <div class="step" data-title="Game over">
+      <h3>Step 11</h3><div class="title">Game over ★ "Kicked out of school!"</div>
+      <ul class="flow"><li>Win checks after every answer, vote, and disconnect</li><li>Class: Bluffer out, or all alive classmates' tasks done</li><li>Bluffer: 3 strikes, or only the Bluffer + 1 left</li><li>Every role is revealed; back to menu</li></ul>
+      <div class="meta"><div><b>Files</b>game/rules.ts · screens/GameOver.tsx</div><div><b>Events</b>game:over</div><div><b>PRD</b>Win and Game Over</div></div>
+    </div>
+
+    <div class="pager"><button type="button" id="prev">← Previous</button><button type="button" id="next">Next →</button></div>
+  </section>
+
+  <section class="unknown" aria-label="Your useful unknown">
+    <h2>Your unknown: "I never create 3d in react"</h2>
+    <ul>
+      <li><b><code>&lt;Canvas&gt;</code> is a React component</b>; JSX tags inside it become 3D objects.</li>
+      <li><b>Moving things don't use React state.</b> <code>useFrame</code> runs every frame and moves objects through refs.</li>
+      <li><b>Models load with <code>useGLTF</code></b> inside <code>&lt;Suspense&gt;</code>, and the bean fallback plugs in there.</li>
+      <li><b>Build step 1 checks it:</b> one room, a bean, the follow camera, joystick + WASD, smooth on desktop <i>and</i> phone, before any multiplayer.</li>
+    </ul>
+  </section>
+
+  <section style="display:grid;gap:10px" aria-label="Components">
+    <h2>Components</h2>
+    <div class="comps">
+      <details><summary>Shared game definitions <span class="tag">shared/</span></summary><div><p>Types, the typed event contract, the map (rooms, walls, 6 terminals, button, seats), questions, quick facts, and tuning constants. Both sides import them so they never disagree.</p></div></details>
+      <details class="kernel"><summary>Game server, the referee <span class="tag">server/</span></summary><div><ul><li><code>index.ts</code>: Express + Socket.IO on one port; serves <code>client/dist</code></li><li><code>rooms.ts</code>: 4-letter codes (no O/0, I/1), max 5, "already started," host handoff</li><li><code>GameRoom.ts</code>: one game's state and timers, written as plain methods so it's unit-testable</li><li><code>rules.ts</code>: roles, tasks, vote tally, win checks (pure + Vitest)</li></ul></div></details>
+      <details><summary>Avatar setup <span class="tag">client/avatar · shared/avatars.ts</span></summary><div><p>Rotating 3D preview on the home screen; pick one of 4–6 CC0 characters, 5 colors, and a name. Saved in <code>localStorage</code> (not Google sign-in, which is Later). Bean variants if packs lack characters.</p></div></details>
+      <details><summary>Menu, join &amp; lobby <span class="tag">client/screens</span></summary><div><p>Create / Join; <code>?room=</code> shows "Join ABCD" after the avatar step; copy link; host-only Start at 4+ with "Need X more."</p></div></details>
+      <details><summary>Role reveal <span class="tag">RoleReveal.tsx · audio/typing.ts</span></summary><div><p>Classroom scene behind an open book. Character on the left page, role + typed quick facts on the right. Web Audio clicks start after the "Open your book" tap.</p></div></details>
+      <details><summary>School scene (3D) <span class="tag">client/game</span></summary><div><p><code>&lt;Canvas&gt;</code>, toon materials, low walls, CC0 furniture, characters (model or bean), glowing terminals and button, fixed follow camera, local movement + collision, remote interpolation.</p></div></details>
+      <details><summary>HUD &amp; controls <span class="tag">client/hud</span></summary><div><p>Custom joystick (touch) + WASD/arrows (desktop), strikes and progress bar, task list, context action button (Use / Meeting).</p></div></details>
+      <details class="kernel"><summary>Study-Bot terminal panel ★ <span class="tag">terminal/</span></summary><div><p>Question, countdown from the server's deadline, Study-Bot's confident chat bubble, 4 answers, Double-check, Verify (Fact-Checker), Hack (Bluffer), and the result flash.</p></div></details>
+      <details><summary>Meeting, chat &amp; vote <span class="tag">Meeting.tsx · VoteResult.tsx</span></summary><div><p>Chat (140 characters max), vote buttons + Skip, 90s countdown, who has voted (not for whom), then the result line.</p></div></details>
+      <details><summary>Game over <span class="tag">GameOver.tsx</span></summary><div><p>Winner headline, every role revealed, back to menu.</p></div></details>
+      <details><summary>Connection &amp; store <span class="tag">net/</span></summary><div><p>One typed Socket.IO client; a Zustand store for screen, role, tasks, question, chat, votes. <code>App.tsx</code> picks the screen by phase.</p></div></details>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Stack">
+    <h2>Stack</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Piece</th><th>Choice</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>UI</td><td>React 19 + TypeScript + Vite</td><td>Your daily stack</td></tr>
+        <tr><td>3D</td><td><a href="https://r3f.docs.pmnd.rs/getting-started/installation">React Three Fiber v9</a> + <a href="https://drei.docs.pmnd.rs">drei v10</a></td><td>three.js as React components; your new tool</td></tr>
+        <tr><td>Client state</td><td><a href="https://zustand.docs.pmnd.rs">Zustand</a></td><td>Readable from per-frame code</td></tr>
+        <tr><td>Real-time</td><td><a href="https://socket.io/docs/v4/">Socket.IO v4</a></td><td>Rooms + private messages, no new framework</td></tr>
+        <tr><td>Server</td><td>Node 20+ · Express · tsx · <a href="https://vitest.dev">Vitest</a></td><td>One process; rules unit-tested</td></tr>
+        <tr><td>Models</td><td><a href="https://kenney.nl/assets">Kenney</a> · <a href="https://quaternius.com">Quaternius</a> (CC0)</td><td>Not copyrighted; bean fallback</td></tr>
+        <tr><td>Hosting</td><td><a href="https://render.com/docs/web-services">Render web service</a></td><td>Your trial credits; free tier as backup</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="card" aria-label="How to run">
+    <h2>Where it runs</h2>
+    <h3>Develop &amp; record the demo</h3>
+    <div class="cmd">npm install
+npm run dev   # server :3001 + page :5173</div>
+    <p>Open 4 windows at <code>localhost:5173</code>. Set each window's avatar first (tabs share saved avatars). Create in one, open the share link in three, Start, move with WASD, and narrate roles, how to win, and how to lose.</p>
+    <h3>Public link</h3>
+    <div class="cmd">Render build:  npm install &amp;&amp; npm run build
+Render start:  npm start</div>
+    <p>Friends open <code>https://&lt;service&gt;.onrender.com/?room=ABCD</code>. Settings and credentials stay in Render's dashboard, never in the repo.</p>
+  </section>
+
+  <section class="card" aria-label="File structure">
+    <h2>File structure</h2>
+    <pre class="tree">New folder/
+├── package.json        <span class="c"># workspaces; dev / build / start / test</span>
+├── README.md · CREDITS.md · .env.example · .gitignore
+├── shared/src/         <span class="c"># types, events, map, questions, quickFacts, constants</span>
+├── server/src/
+│   ├── index.ts        <span class="c"># Express + Socket.IO</span>
+│   ├── rooms.ts        <span class="c"># codes, join, host</span>
+│   └── game/           <span class="c"># GameRoom.ts (referee), rules.ts, rules.test.ts</span>
+├── client/
+│   ├── public/models/  <span class="c"># CC0 .glb files</span>
+│   └── src/
+│       ├── App.tsx · main.tsx · styles.css
+│       ├── net/        <span class="c"># socket.ts, store.ts</span>
+│       ├── screens/    <span class="c"># MainMenu, Join, Lobby, RoleReveal, Meeting, VoteResult, GameOver</span>
+│       ├── game/       <span class="c"># GameView, SchoolMap, Player, Terminal3D, MeetingButton3D, FollowCamera, useMovement, positions</span>
+│       ├── hud/        <span class="c"># Hud, Joystick, StrikeBar, TaskList, ActionButton</span>
+│       ├── avatar/     <span class="c"># AvatarPreview, AvatarPicker, avatarStorage</span>
+│       ├── terminal/   <span class="c"># TerminalPanel (the kernel)</span>
+│       └── audio/      <span class="c"># typing.ts</span>
+└── devpost/            <span class="c"># planning docs</span></pre>
+  </section>
+
+  <section style="display:grid;gap:10px" aria-label="Failures and simplifications">
+    <h2>When it breaks · what we simplified</h2>
+    <details open><summary>Failure modes <span class="tag">5</span></summary><div><ul>
+      <li><b>Server waking or unreachable</b> → "Connecting to school…" banner, auto-retry</li>
+      <li><b>Model won't load</b> → bean fallback for that object</li>
+      <li><b>No WebGL</b> → plain "can't show 3D" message</li>
+      <li><b>Disconnect / refresh mid-game</b> → treated as eliminated; win check runs; lobby host hands off</li>
+      <li><b>Sound blocked</b> → typing still animates silently</li>
+    </ul></div></details>
+    <details><summary>Simplifications <span class="tag">8</span></summary><div><ul>
+      <li>Phones report their own movement; server trusts it (no anti-cheat)</li>
+      <li>Games in memory, no database</li>
+      <li>No reconnection: refresh means leaving</li>
+      <li>Pre-written questions (live AI is Later)</li>
+      <li>Low walls instead of see-through shaders</li>
+      <li>Synthesized typing sound</li>
+      <li>Avatar saved on the device instead of Google sign-in</li>
+      <li>Custom joystick + keyboard, no library</li>
+    </ul></div></details>
+    <details><summary>Still open (none block approval) <span class="tag">4</span></summary><div><ul>
+      <li>Exact versions via <code>npm view</code> in step 1</li>
+      <li>Which Kenney / Quaternius packs (confirm CC0 on each)</li>
+      <li>15–20 questions: agent drafts, you review</li>
+      <li>Timing values tuned in the 4-window playtest</li>
+    </ul></div></details>
+  </section>
+
+  <p class="foot">Companion view of <code>devpost/spec.md</code>. The Markdown file is the canonical plan.</p>
+</main>
+<script>
+(function () {
+  var steps = Array.prototype.slice.call(document.querySelectorAll(".step"));
+  var nav = document.getElementById("stepnav");
+  var prev = document.getElementById("prev"), next = document.getElementById("next");
+  var cur = 0;
+  steps.forEach(function (s, i) {
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = (i + 1) + ". " + s.getAttribute("data-title");
+    b.addEventListener("click", function () { show(i); });
+    nav.appendChild(b);
+  });
+  function show(i) {
+    cur = i;
+    steps.forEach(function (s, j) { s.hidden = j !== i; });
+    Array.prototype.forEach.call(nav.children, function (b, j) { if (j === i) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+    prev.disabled = i === 0; next.disabled = i === steps.length - 1;
+  }
+  prev.addEventListener("click", function () { if (cur > 0) show(cur - 1); });
+  next.addEventListener("click", function () { if (cur < steps.length - 1) show(cur + 1); });
+  show(0);
+})();
+</script>
+</body>
+</html>

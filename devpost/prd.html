@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who Hacked the Bot? PRD</title>
+<style>
+/* Layout: one readable column. Journey diagram on top (click a screen to jump to it), then per-screen reveals. Companion to prd.md (canonical). */
+:root {
+  --bg: #f3f5f1; --surface: #ffffff; --ink: #1d2a2a; --muted: #5d6e6a; --line: #c9d3cf;
+  --accent: #b9860f; --accent-soft: #fbf1d6; --bluff: #c2412f; --bluff-soft: #fbe5e1;
+  --truth: #2f8a5f; --truth-soft: #e0f3e9; --node: #e8eeeb; --ask: #3f63b5; --ask-soft: #e3eafb;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b2524; --surface: #243231; --ink: #eef0e6; --muted: #a3b5ae; --line: #3d5553;
+    --accent: #f2c14e; --accent-soft: #3a3320; --bluff: #ec6f5e; --bluff-soft: #3d2622;
+    --truth: #7fd1a8; --truth-soft: #1f3a2e; --node: #2e403f; --ask: #8fb0ff; --ask-soft: #232f4a; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; padding: 32px 16px 64px; }
+main { max-width: 880px; margin: 0 auto; display: grid; gap: 28px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 6px 0 8px; text-wrap: balance; }
+h2 { font-size: 22px; margin: 0; }
+h3 { font-size: 15px; margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 66ch; }
+.status { display: inline-block; font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; background: var(--accent-soft); border: 1px solid var(--accent); margin-top: 10px; }
+
+.grew { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 10px; }
+.grew-row { display: grid; grid-template-columns: 1fr auto 1.4fr; gap: 10px; align-items: start; font-size: 14px; }
+.grew-row .from { color: var(--muted); font-style: italic; }
+.grew-row .to { font-weight: 600; }
+.grew-row .arr { color: var(--accent); font-weight: 700; }
+@media (max-width: 560px) { .grew-row { grid-template-columns: 1fr; gap: 2px; } .grew-row .arr { display: none; } .grew-row + .grew-row { border-top: 1px solid var(--line); padding-top: 8px; } }
+
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; }
+.diagram .scroll { overflow-x: auto; }
+.diagram svg { display: block; min-width: 720px; width: 100%; height: auto; }
+.n rect { fill: var(--node); stroke: var(--line); stroke-width: 1.5; }
+.n text { fill: var(--ink); font: 600 13px var(--body); }
+.n.k rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.5; }
+.n.end rect { fill: var(--truth-soft); stroke: var(--truth); }
+a.nl { cursor: pointer; }
+a.nl:hover rect, a.nl:focus rect { stroke: var(--ask); stroke-width: 3; }
+a.nl:focus { outline: none; }
+.e { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+.e.bad { stroke: var(--bluff); }
+.e.good { stroke: var(--truth); }
+.lbl { fill: var(--muted); font: 12px var(--body); }
+.lbl.bad { fill: var(--bluff); }
+.lbl.good { fill: var(--truth); }
+.arrow { fill: var(--muted); } .arrow-bad { fill: var(--bluff); } .arrow-good { fill: var(--truth); }
+.hint { font-size: 13px; color: var(--muted); }
+
+.screens { display: grid; gap: 10px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; scroll-margin-top: 16px; }
+details.kernel { border: 2px solid var(--accent); }
+summary { cursor: pointer; padding: 14px 18px; font-weight: 700; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+summary:focus-visible { outline: 2px solid var(--ask); outline-offset: 2px; }
+summary .tag { font-weight: 400; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+.body { padding: 0 18px 18px; display: grid; gap: 14px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.cols > div { min-width: 0; display: grid; gap: 6px; align-content: start; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+ul.ac { list-style: none; padding-left: 0; }
+ul.ac li { display: flex; gap: 8px; align-items: flex-start; }
+ul.ac input { margin-top: 5px; accent-color: var(--truth); flex: none; }
+.states li::marker { color: var(--bluff); }
+.facts { display: grid; gap: 8px; }
+.fact { border-radius: 8px; padding: 10px 12px; font-size: 14px; background: var(--node); }
+.fact b { display: block; }
+.fact.bl { background: var(--bluff-soft); }
+.fact.fc { background: var(--truth-soft); }
+
+.assume { background: var(--ask-soft); border: 1px solid var(--ask); border-radius: 12px; padding: 16px 18px; display: grid; gap: 10px; }
+.assume h2 { color: var(--ask); }
+.assume ul { gap: 6px; }
+
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px; }
+.decision { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.decision b { display: block; }
+.decision span { color: var(--muted); }
+
+.buckets { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.bucket { border-top: 4px solid; }
+.bucket.now { border-top-color: var(--truth); }
+.bucket.def { border-top-color: var(--accent); }
+.bucket.later { border-top-color: var(--ask); }
+.bucket.no { border-top-color: var(--bluff); }
+.bucket .body { font-size: 14px; }
+.foot { font-size: 13px; color: var(--muted); }
+code { font-family: var(--mono); font-size: .9em; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">PRD · Build With AI: Basics</div>
+    <h1>Who Hacked the Bot?</h1>
+    <p class="lede">A multiplayer social deduction web game for Asian Gen Z friend groups. Players at a cartoon school rely on Study-Bot, an AI study assistant, while one secret classmate, the Bluffer, makes it lie.</p>
+    <span class="status">status: approved</span>
+  </header>
+
+  <section class="grew" aria-label="What the scope became">
+    <h2>What the scope sketch became</h2>
+    <div class="grew-row"><span class="from">"Friends join a game room from their own phones"</span><span class="arr">→</span><span class="to">Main Menu → Create or Join by short code or auto-join link → lobby → host starts at 4+</span></div>
+    <div class="grew-row"><span class="from">"get secret roles"</span><span class="arr">→</span><span class="to">Seated in class, open a book: your character, your role, quick facts typed out with sound</span></div>
+    <div class="grew-row"><span class="from">"trusts it or double-checks"</span><span class="arr">→</span><span class="to">Timed multiple choice; Study-Bot recommends one; Double-check costs time and shows a hint</span></div>
+    <div class="grew-row"><span class="from">"Fact-Checker can verify an answer"</span><span class="arr">→</span><span class="to">Once per game, TRUE/FALSE only</span></div>
+    <div class="grew-row"><span class="from">"2D, Among Us–style art"</span><span class="arr">→</span><span class="to">2.5D cartoon school: 3D models, fixed follow camera like Mobile Legends / Super Sus; cute, chunky characters</span></div>
+    <div class="grew-row"><span class="from">"Anyone can call a meeting"</span><span class="arr">→</span><span class="to">Button in the classroom; text chat; vote or skip; no game timer</span></div>
+  </section>
+
+  <section class="diagram" aria-label="Journey diagram">
+    <h2>The journey</h2>
+    <p class="hint">Click a screen to jump to its details.</p>
+    <div class="scroll">
+      <svg viewBox="0 0 800 290" role="img" aria-label="Main Menu leads to Lobby by create or join, Lobby to Role Reveal when the host starts with 4 or more players, then the school map. The map and terminals go back and forth. The classroom button opens a Meeting, then a Vote Result. If the Bluffer is not caught, play returns to the map; if caught, Game Over. Three strikes or reaching the progress goal at terminals also leads to Game Over.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-bad" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-good" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <path class="e" d="M150,58 H171" marker-end="url(#ar)"/>
+        <text class="lbl" x="128" y="22">create / join</text>
+        <path class="e" d="M305,58 H326" marker-end="url(#ar)"/>
+        <text class="lbl" x="282" y="22">Start, 4+</text>
+        <path class="e" d="M460,58 H481" marker-end="url(#ar)"/>
+        <path class="e" d="M615,48 H636" marker-end="url(#ar)"/>
+        <path class="e" d="M640,68 H619" marker-end="url(#ar)"/>
+        <path class="e" d="M580,86 V166" marker-end="url(#ar)"/>
+        <text class="lbl" x="588" y="130">classroom button</text>
+        <path class="e" d="M485,198 H464" marker-end="url(#ar)"/>
+        <path class="e" d="M395,170 V128 H520 V90" marker-end="url(#ar)"/>
+        <text class="lbl" x="400" y="122">not the Bluffer</text>
+        <path class="e good" d="M330,198 H154" marker-end="url(#arg)"/>
+        <text class="lbl good" x="170" y="190">Bluffer caught ★</text>
+        <path class="e bad" d="M705,86 V265 H85 V230" marker-end="url(#arb)"/>
+        <text class="lbl bad" x="300" y="282">3 strikes → Bluffer wins · progress goal → class wins</text>
+
+        <a class="nl" href="#s-menu" aria-label="Main Menu and Lobby"><g class="n"><rect x="20" y="30" width="130" height="56" rx="10"/><text x="85" y="54" text-anchor="middle">Main Menu</text><text x="85" y="72" text-anchor="middle" style="font-weight:400">create / join</text></g></a>
+        <a class="nl" href="#s-menu" aria-label="Lobby"><g class="n"><rect x="175" y="30" width="130" height="56" rx="10"/><text x="240" y="54" text-anchor="middle">Lobby</text><text x="240" y="72" text-anchor="middle" style="font-weight:400">code + link</text></g></a>
+        <a class="nl" href="#s-reveal" aria-label="Role Reveal"><g class="n"><rect x="330" y="30" width="130" height="56" rx="10"/><text x="395" y="54" text-anchor="middle">Role Reveal</text><text x="395" y="72" text-anchor="middle" style="font-weight:400">the book</text></g></a>
+        <a class="nl" href="#s-map" aria-label="School map"><g class="n"><rect x="485" y="30" width="130" height="56" rx="10"/><text x="550" y="54" text-anchor="middle">School Map</text><text x="550" y="72" text-anchor="middle" style="font-weight:400">joystick</text></g></a>
+        <a class="nl" href="#s-terminal" aria-label="Study-Bot terminal"><g class="n k"><rect x="640" y="30" width="140" height="56" rx="10"/><text x="710" y="54" text-anchor="middle">Terminal</text><text x="710" y="72" text-anchor="middle" style="font-weight:400">trust or check</text></g></a>
+        <a class="nl" href="#s-meeting" aria-label="Meeting"><g class="n"><rect x="485" y="170" width="130" height="56" rx="10"/><text x="550" y="194" text-anchor="middle">Meeting</text><text x="550" y="212" text-anchor="middle" style="font-weight:400">chat + vote</text></g></a>
+        <a class="nl" href="#s-meeting" aria-label="Vote result"><g class="n"><rect x="330" y="170" width="130" height="56" rx="10"/><text x="395" y="194" text-anchor="middle">Vote Result</text><text x="395" y="212" text-anchor="middle" style="font-weight:400">who was out</text></g></a>
+        <a class="nl" href="#s-over" aria-label="Game Over"><g class="n end"><rect x="20" y="170" width="130" height="56" rx="10"/><text x="85" y="194" text-anchor="middle">Game Over</text><text x="85" y="212" text-anchor="middle" style="font-weight:400">roles revealed</text></g></a>
+      </svg>
+    </div>
+  </section>
+
+  <section class="screens" aria-label="Screens">
+    <h2>Screen by screen</h2>
+
+    <details id="s-menu" open>
+      <summary>Main Menu &amp; Lobby <span class="tag">steps 1–4</span></summary>
+      <div class="body">
+        <p>Open the link in a phone browser. <b>Set up your avatar</b> on the home screen (rotating 3D preview: 4–6 characters, a color, your name; remembered on this device). Then create a lobby, or join a friend by typing the code or tapping the share link.</p>
+        <div class="cols">
+          <div><h3>Acceptance criteria</h3><ul class="ac">
+            <li><input type="checkbox" aria-label="done">Home shows my avatar rotating; I can change character, color, name</li>
+            <li><input type="checkbox" aria-label="done">My avatar is remembered next time on this device</li>
+            <li><input type="checkbox" aria-label="done">Menu shows Create Lobby and Join Friend</li>
+            <li><input type="checkbox" aria-label="done">Create shows a short code and a copyable share link</li>
+            <li><input type="checkbox" aria-label="done">Valid code + name adds the player to every screen's list</li>
+            <li><input type="checkbox" aria-label="done">Share link asks only for a name, then joins automatically</li>
+            <li><input type="checkbox" aria-label="done">Start is host-only and enabled at 4+, otherwise says how many more</li>
+          </ul></div>
+          <div><h3>What if</h3><ul class="states">
+            <li>Wrong code: "room not found," try again</li>
+            <li>Too few players: Start disabled, "need X more"</li>
+            <li>Game already started: told it's in progress</li>
+          </ul></div>
+        </div>
+      </div>
+    </details>
+
+    <details id="s-reveal">
+      <summary>Role Reveal <span class="tag">step 5</span></summary>
+      <div class="body">
+        <p>Everyone is seated in the classroom. Each player opens a book: their character's picture, their secret role, and quick facts that <b>type out with a typing sound</b>.</p>
+        <div class="cols">
+          <div><h3>Acceptance criteria</h3><ul class="ac">
+            <li><input type="checkbox" aria-label="done">Exactly 1 Bluffer, exactly 1 Fact-Checker, the rest Students</li>
+            <li><input type="checkbox" aria-label="done">Each player sees only their own role</li>
+            <li><input type="checkbox" aria-label="done">Book shows character picture, role name, typed quick facts with sound</li>
+          </ul></div>
+          <div class="facts"><h3>Quick facts (editable)</h3>
+            <div class="fact"><b>Student</b>Answer questions at Study-Bot terminals. But careful: someone may have hacked it. Trust it, or double-check?</div>
+            <div class="fact bl"><b>Bluffer</b>You hacked Study-Bot. Make terminals give convincing wrong answers, and blend in so nobody suspects you.</div>
+            <div class="fact fc"><b>Fact-Checker</b>You can see the truth, once. Use it to expose a lie, but stay hidden, because if the Bluffer knows who you are, you're a target.</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details id="s-map">
+      <summary>School Map <span class="tag">step 6</span></summary>
+      <div class="body">
+        <p>A 2.5D cartoon school: 3D models, a fixed camera angle that follows you (like Mobile Legends / Super Sus). Move with an on-screen joystick and visit terminals from your task list.</p>
+        <div class="cols">
+          <div><h3>Acceptance criteria</h3><ul class="ac">
+            <li><input type="checkbox" aria-label="done">Joystick moves your character; others move in real time</li>
+            <li><input type="checkbox" aria-label="done">Starts in the classroom; a few rooms to explore</li>
+            <li><input type="checkbox" aria-label="done">Task list shows terminals still to visit</li>
+            <li><input type="checkbox" aria-label="done">Strikes (e.g. 1/3) and class progress always visible to all</li>
+          </ul></div>
+          <div><h3>What if</h3><ul class="states">
+            <li>Voted-out player: can't move, answer, vote, or chat</li>
+            <li>Disconnect: see assumptions</li>
+          </ul></div>
+        </div>
+      </div>
+    </details>
+
+    <details id="s-terminal" class="kernel" open>
+      <summary>Study-Bot Terminal ★ the kernel <span class="tag">steps 7–10</span></summary>
+      <div class="body">
+        <p>A timed multiple-choice question. Study-Bot confidently recommends one option. Trust it, or spend time to double-check.</p>
+        <div class="cols">
+          <div><h3>Everyone</h3><ul class="ac">
+            <li><input type="checkbox" aria-label="done">Action button near a terminal opens the question</li>
+            <li><input type="checkbox" aria-label="done">Multiple choice with visible countdown</li>
+            <li><input type="checkbox" aria-label="done">Study-Bot recommends one option, confident chat-bubble style</li>
+            <li><input type="checkbox" aria-label="done">Double-check costs time and shows a hint</li>
+            <li><input type="checkbox" aria-label="done">Correct → progress; trusted lie → +1 strike for all to see; timeout = wrong</li>
+          </ul></div>
+          <div><h3>Bluffer only</h3><ul class="ac">
+            <li><input type="checkbox" aria-label="done">Hidden Hack action at terminals</li>
+            <li><input type="checkbox" aria-label="done">Hacked terminal's next answer recommends the plausible lie</li>
+            <li><input type="checkbox" aria-label="done">Hack has a cooldown</li>
+            <li><input type="checkbox" aria-label="done">Can open terminals to look busy</li>
+          </ul>
+          <h3 style="margin-top:8px">Fact-Checker only</h3><ul class="ac">
+            <li><input type="checkbox" aria-label="done">Verify shows TRUE / FALSE about Study-Bot's pick</li>
+            <li><input type="checkbox" aria-label="done">Once per game, then it disappears</li>
+          </ul></div>
+        </div>
+      </div>
+    </details>
+
+    <details id="s-meeting">
+      <summary>Meeting &amp; Vote Result <span class="tag">steps 11–12</span></summary>
+      <div class="body">
+        <p>Press the button in the classroom. Everyone is pulled into a meeting, argues in text chat, and votes someone out or skips.</p>
+        <div class="cols">
+          <div><h3>Acceptance criteria</h3><ul class="ac">
+            <li><input type="checkbox" aria-label="done">Any living player can press the classroom button</li>
+            <li><input type="checkbox" aria-label="done">All players go to the Meeting screen</li>
+            <li><input type="checkbox" aria-label="done">Text chat, only during meetings</li>
+            <li><input type="checkbox" aria-label="done">Vote one player or skip; result shown to all</li>
+            <li><input type="checkbox" aria-label="done">Result says whether the voted-out player was the Bluffer</li>
+          </ul></div>
+          <div><h3>Rules</h3><ul>
+            <li>Anyone can claim any role; the game never confirms it until Game Over</li>
+            <li>Play resumes after a meeting if the Bluffer wasn't caught</li>
+          </ul></div>
+        </div>
+      </div>
+    </details>
+
+    <details id="s-over">
+      <summary>Game Over <span class="tag">step 13</span></summary>
+      <div class="body">
+        <div class="cols">
+          <div><h3>Class wins</h3><ul><li>Bluffer voted out: "kicked out of school" ★</li><li>Class progress reaches the goal</li></ul></div>
+          <div><h3>Bluffer wins</h3><ul><li>3 strikes</li><li>Only the Bluffer and one other player remain</li></ul></div>
+        </div>
+        <ul class="ac">
+          <li><input type="checkbox" aria-label="done">Shows the winning side and reveals every role</li>
+          <li><input type="checkbox" aria-label="done">Way back to the menu</li>
+          <li><input type="checkbox" aria-label="done">No game timer</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section class="assume" aria-label="Assumptions to confirm">
+    <h2>Accepted assumptions</h2>
+    <p>Placeholders I drafted, which you accepted for now. They can be tuned during the build.</p>
+    <ul>
+      <li><b>Rooms:</b> 4 (Classroom with meeting button, Library, Science Lab, Canteen); terminals in all but the Classroom</li>
+      <li><b>Players:</b> 4–5, max 5</li>
+      <li><b>Tasks:</b> 3 per player; class goal tuned for a ~10-minute game</li>
+      <li><b>Timing:</b> ~20s per question; Double-check costs ~8s; hack cooldown ~30s</li>
+      <li><b>Meetings:</b> 1 per player per game; ~60–90s for chat and vote</li>
+      <li><b>Fact-Checker</b> sees TRUE/FALSE only</li>
+      <li><b>Voted-out players</b> become spectators; <b>disconnects</b> are treated the same</li>
+      <li><b>Characters:</b> now chosen in Avatar Setup on the home screen</li>
+      <li><b>Chat</b> only during meetings</li>
+    </ul>
+  </section>
+
+  <section style="display:grid;gap:12px" aria-label="Product decisions">
+    <h2>Your decisions</h2>
+    <div class="decisions">
+      <div class="decision"><b>Web game in the phone browser</b><span>Nothing to install; Play Store later</span></div>
+      <div class="decision"><b>Code or link, no matchmaking</b><span>"will take too long to build in this hackathon"</span></div>
+      <div class="decision"><b>Minimum 4 players</b><span>Smallest group where a vote means something</span></div>
+      <div class="decision"><b>Demo with 4 windows</b><span>Viewers see every screen at once</span></div>
+      <div class="decision"><b>Book role reveal</b><span>"Do not copy" Among Us</span></div>
+      <div class="decision"><b>Fact-Checker once per game</b><span>So nobody relies on them like an AI</span></div>
+      <div class="decision"><b>Strikes shown</b><span>Strike timing becomes evidence</span></div>
+      <div class="decision"><b>No timer</b><span>Ends by win conditions, like Among Us</span></div>
+      <div class="decision"><b>Avatar setup at home</b><span>Recognizable in meetings; saved on device, not Google sign-in</span></div>
+      <div class="decision"><b>Text chat in meetings</b><span>"for this build use chat first"</span></div>
+      <div class="decision"><b>Cartoon common school</b><span>Familiar, friendly, not a clone</span></div>
+      <div class="decision"><b>Art style like Super Sus</b><span>Cute, chunky characters; no Super Sus assets</span></div>
+      <div class="decision"><b>2.5D, fixed follow camera</b><span>"Lets make it 2.5 d for now" after comparing all three</span></div>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:12px" aria-label="Boundary">
+    <h2>Building · Deferred · Later · Not doing</h2>
+    <div class="buckets">
+      <details class="bucket now" open><summary>Building now</summary><div class="body"><ul>
+        <li>Menu, lobby, code + link</li><li>Book role reveal</li><li>2.5D map + joystick, synced</li><li>Terminals, strikes, progress</li><li>Hack + Verify</li><li>Meetings, chat, voting</li><li>Win/lose + Game Over</li><li>Pre-written questions with lies + hints</li>
+      </ul></div></details>
+      <details class="bucket def" open><summary>Deferred</summary><div class="body"><ul>
+        <li>Public matchmaking</li><li>Play Store / App Store</li><li>Filler bots</li><li>Voice chat</li>
+      </ul></div></details>
+      <details class="bucket later" open><summary>Later</summary><div class="body"><ul>
+        <li>Multiple maps</li><li>Google sign-in</li><li>Avatar hats &amp; accessories</li><li>Full 3D, maybe Roblox</li><li>More roles</li><li>AI-generated questions</li><li>Real playtest</li>
+      </ul></div></details>
+      <details class="bucket no" open><summary>Not doing</summary><div class="body"><ul>
+        <li>Educational quiz feel</li><li>Accounts, saved history</li><li>CPU opponents</li><li>Copying Among Us</li><li>Emotional support / news topics</li>
+      </ul></div></details>
+    </div>
+  </section>
+
+  <p class="foot">Companion view of <code>devpost/prd.md</code>. The Markdown file is the canonical plan. Checkboxes here are for your own reading and aren't saved.</p>
+</main>
+</body>
+</html>
