@@ -8,15 +8,13 @@ const SCREEN_IDLE = "#ffd84d";
 const SCREEN_NEAR = "#fff3b0";
 
 /**
- * A Study-Bot terminal. It glows when you're close enough to use it, shows a
- * bobbing marker if it's on your task list, and, for the Bluffer only, a red
- * screen while their hack is waiting for a victim.
+ * A Study-Bot terminal. It glows when you're close enough to use it and, for
+ * the Bluffer only, shows a red screen while their hack waits for a victim.
  */
 export function Terminal3D({ spot }: { spot: TerminalSpot }) {
   const near = useGame((s) => s.nearTerminal === spot.id);
-  const task = useGame((s) => s.tasks.find((t) => t.terminalId === spot.id));
-  // Marker shows once you hold all the pieces (the Bluffer's fake tasks are always "ready").
-  const isTask = Boolean(task && task.found === task.total);
+  // A marker shows when you carry enough pieces to try a question here.
+  const isTask = useGame((s) => s.bag.length >= 3);
   const hackedByMe = useGame((s) => s.myHacks.includes(spot.id));
   const marker = useRef<Mesh>(null);
 

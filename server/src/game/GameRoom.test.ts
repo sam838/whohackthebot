@@ -3,8 +3,8 @@ import { PIECE_SPOTS } from "@whtb/shared/pieces";
 import { QUESTIONS } from "@whtb/shared/questions";
 import type { PieceInfo, Role } from "@whtb/shared/types";
 import { describe, expect, it } from "vitest";
-import { ActionError, GameRoom, type Sender } from "./GameRoom";
-import { assignRoles, assignTasks, checkWinner } from "./rules";
+import { GameRoom, type Sender } from "./GameRoom";
+import { assignRoles, checkWinner } from "./rules";
 
 interface Sent {
   to: string;
@@ -27,35 +27,33 @@ function setup(n = 4) {
   const byRole = (role: Role) => [...game.roles].filter(([, r]) => r === role).map(([id]) => id);
   const last = (id: string, event: string) => sent.filter((s) => s.to === id && s.event === event).at(-1)?.payload;
   const all = (id: string, event: string) => sent.filter((s) => s.to === id && s.event === event).map((s) => s.payload);
-  const tasksOf = (id: string): string[] => last(id, "game:tasks").tasks.map((t: { terminalId: string }) => t.terminalId);
+  const floor = (): PieceInfo[] => last(ids[0], "pieces:state").pieces;
+  const bag = (id: string): string[] => last(id, "game:bag").pieces.map((p: { id: string }) => p.id);
   const walkTo = (id: string, terminalId: string) => {
     const t = TERMINALS.find((x) => x.id === terminalId)!;
     positions.set(id, { x: t.x, z: t.z + 0.9 });
   };
-  const pieceIds = (id: string, terminalId: string) => [0, 1, 2].map((k) => `${id}:${terminalId}:${k}`);
-  /** Walk onto each of this task's pieces and pick it up. */
-  const collect = (id: string, terminalId: string) => {
-    const visible: PieceInfo[] = last(byRole("student")[0], "pieces:state")?.pieces ?? [];
-    for (const pieceId of pieceIds(id, terminalId)) {
-      const p = visible.find((v) => v.id === pieceId);
-      if (!p) continue;
-      positions.set(id, { x: p.x, z: p.z });
-      game.pickUp(id, pieceId);
-    }
+  const pieceIdsOf = (questionIndex: number) => game.pieceIdsOf(game.questions[questionIndex]);
+  /** Walk onto a piece and pick it up. */
+  const grab = (id: string, pieceId: string) => {
+    const p = floor().find((f) => f.id === pieceId);
+    if (!p) throw new Error(`piece ${pieceId} not on floor`);
+    positions.set(id, { x: p.x, z: p.z });
+    game.pickUp(id, pieceId);
   };
-  /** Collect, walk to the terminal, open it, and arrange it yourself. Returns the question shown. */
-  const ready = (id: string, terminalId: string, how: "you" | "studybot" = "you") => {
-    collect(id, terminalId);
+  /** One player grabs all 3 pieces of question i, walks to the terminal, opens and arranges it. */
+  const solveSetup = (id: string, qi: number, terminalId = "library-1", how: "you" | "studybot" = "you") => {
+    for (const pid of pieceIdsOf(qi)) grab(id, pid);
     walkTo(id, terminalId);
     game.openTerminal(id, terminalId);
-    if (how === "you") game.arrange(id, pieceIds(id, terminalId));
+    if (how === "you") game.arrange(id, pieceIdsOf(qi));
     else game.botArrange(id);
     return last(id, "terminal:question");
   };
   const advance = (ms: number) => {
     clock += ms;
   };
-  return { game, sent, byRole, tasksOf, walkTo, last, all, advance, collect, ready, pieceIds, positions };
+  return { game, sent, byRole, last, all, floor, bag, walkTo, pieceIdsOf, grab, solveSetup, advance, positions };
 }
 
 describe("rules", () => {
@@ -70,24 +68,17 @@ describe("rules", () => {
     }
   });
 
-  it("gives each player 3 different real terminals", () => {
-    const ids = TERMINALS.map((t) => t.id);
-    for (const list of assignTasks(["a", "b", "c", "d"], ids, Math.random).values()) {
-      expect(new Set(list).size).toBe(3);
-      list.forEach((t) => expect(ids).toContain(t));
-    }
-  });
-
   it("picks winners in the right order", () => {
-    const base = { strikes: 0, blufferAlive: true, aliveCount: 4, tasksRemaining: 5 };
+    const base = { strikes: 0, blufferAlive: true, aliveCount: 4, questionsRemaining: 5 };
     expect(checkWinner(base)).toBeUndefined();
     expect(checkWinner({ ...base, blufferAlive: false })?.winner).toBe("class");
     expect(checkWinner({ ...base, strikes: 3 })?.winner).toBe("bluffer");
     expect(checkWinner({ ...base, aliveCount: 2 })?.winner).toBe("bluffer");
-    expect(checkWinner({ ...base, tasksRemaining: 0 })?.winner).toBe("class");
+    expect(checkWinner({ ...base, questionsRemaining: 0 })?.winner).toBe("class");
   });
 
   it("every question's pieces read as its prompt, and its lie differs from its answer", () => {
+    expect(QUESTIONS.length).toBeGreaterThanOrEqual(8);
     for (const q of QUESTIONS) {
       expect(q.pieces).toHaveLength(3);
       expect(q.pieces.join(" ")).toBe(q.prompt);
@@ -97,77 +88,209 @@ describe("rules", () => {
   });
 });
 
-describe("question pieces", () => {
-  it("puts each task's 3 pieces in 3 different rooms, on free floor, and never sends their text", () => {
-    const { last, byRole, pieceIds } = setup(5);
-    const visible: PieceInfo[] = last(byRole("student")[0], "pieces:state").pieces;
-    expect(visible).toHaveLength(4 * 3 * 3);
-    for (const p of visible) expect(Object.keys(p).sort()).toEqual(["id", "ownerId", "x", "z"]);
+describe("shared question pieces", () => {
+  it("has 2 questions per classmate, each with 3 pieces in 3 different rooms, with no text on the floor", () => {
+    for (const n of [4, 5]) {
+      const { game, floor } = setup(n);
+      expect(game.questions).toHaveLength((n - 1) * 2);
+      expect(floor()).toHaveLength((n - 1) * 2 * 3);
+      for (const p of floor()) {
+        expect(Object.keys(p).sort()).toEqual(["id", "x", "z"]);
+        expect(p.id).toMatch(/^piece-\d+$/); // opaque: no question id leaks
+      }
+      for (const q of game.questions) {
+        const rooms = game.pieceIdsOf(q).map((id) => {
+          const p = floor().find((f) => f.id === id)!;
+          return PIECE_SPOTS.find((s) => s.x === p.x && s.z === p.z)!.room;
+        });
+        expect(new Set(rooms).size).toBe(3);
+      }
+    }
+  });
+
+  it("anyone can pick up any piece, only when standing on it, and learns its text", () => {
+    const { game, byRole, floor, bag, grab, last, pieceIdsOf } = setup();
     const s = byRole("student")[0];
-    const t = last(s, "game:tasks").tasks[0].terminalId;
-    const rooms = pieceIds(s, t).map((id) => {
-      const p = visible.find((v) => v.id === id)!;
-      return PIECE_SPOTS.find((spot) => spot.x === p.x && spot.z === p.z)!.room;
-    });
-    expect(new Set(rooms).size).toBe(3);
+    expect(() => game.pickUp(s, pieceIdsOf(0)[0])).toThrow("Walk onto the piece");
+    grab(s, pieceIdsOf(0)[0]);
+    expect(bag(s)).toEqual([pieceIdsOf(0)[0]]);
+    expect(last(s, "piece:collected").text).toBe(game.questions[0].pieces[0]);
+    expect(floor().map((f) => f.id)).not.toContain(pieceIdsOf(0)[0]);
   });
 
-  it("the Bluffer never receives piece positions", () => {
-    const { all, byRole } = setup();
-    expect(all(byRole("bluffer")[0], "pieces:state")).toHaveLength(0);
+  it("the Bluffer can hoard at most 2 pieces", () => {
+    const { byRole, grab, bag, pieceIdsOf } = setup();
+    const b = byRole("bluffer")[0];
+    grab(b, pieceIdsOf(0)[0]);
+    grab(b, pieceIdsOf(0)[1]);
+    expect(() => grab(b, pieceIdsOf(0)[2])).toThrow("hands are full");
+    expect(bag(b)).toHaveLength(2);
   });
 
-  it("only the owner can pick up a piece, and only when standing on it", () => {
-    const { game, byRole, last, positions, pieceIds } = setup();
+  it("everyone standing at the same terminal pools their pieces, the Bluffer included", () => {
+    const { game, byRole, grab, walkTo, last, pieceIdsOf } = setup();
     const [s1, s2] = byRole("student");
-    const t = last(s1, "game:tasks").tasks[0].terminalId;
-    const pieceId = pieceIds(s1, t)[0];
-    const p = (last(s1, "pieces:state").pieces as PieceInfo[]).find((v) => v.id === pieceId)!;
-    expect(() => game.pickUp(s1, pieceId)).toThrow("Walk onto the piece");
-    positions.set(s2, { x: p.x, z: p.z });
-    game.pickUp(s2, pieceId);
-    expect(last(s2, "piece:collected")).toBeUndefined();
-    positions.set(s1, { x: p.x, z: p.z });
-    game.pickUp(s1, pieceId);
-    expect(last(s1, "piece:collected").text.length).toBeGreaterThan(0);
-    expect(last(s1, "game:tasks").tasks[0].found).toBe(1);
+    const b = byRole("bluffer")[0];
+    const [p0, p1, p2] = pieceIdsOf(0);
+    grab(s1, p0);
+    grab(s2, p1);
+    walkTo(s1, "library-1");
+    walkTo(s2, "library-1");
+    expect(() => game.openTerminal(s1, "library-1")).toThrow("Need at least 3 pieces here (2 so far)");
+    grab(b, p2);
+    walkTo(b, "library-1");
+    game.openTerminal(s1, "library-1");
+    const cards = last(s1, "terminal:arrange").cards.map((c: { id: string }) => c.id).sort();
+    expect(cards).toEqual([p0, p1, p2].sort());
   });
 
-  it("a terminal won't open your question until you hold all 3 pieces", () => {
-    const { game, byRole, tasksOf, walkTo } = setup();
-    const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
-    walkTo(s, t);
-    expect(() => game.openTerminal(s, t)).toThrow("Find all the question pieces first (0/3)");
+  it("a terminal refuses pieces held by classmates who are elsewhere", () => {
+    const { game, byRole, grab, walkTo, pieceIdsOf } = setup();
+    const [s1, s2] = byRole("student");
+    grab(s1, pieceIdsOf(0)[0]);
+    grab(s2, pieceIdsOf(0)[1]);
+    grab(s2, pieceIdsOf(0)[2]);
+    walkTo(s1, "library-1");
+    walkTo(s2, "canteen-1");
+    expect(() => game.openTerminal(s1, "library-1")).toThrow("(1 so far)");
   });
 
-  it("a wrong arrangement says try again; the right one reveals the real question", () => {
-    const { game, byRole, tasksOf, walkTo, collect, last, pieceIds } = setup();
+  it("an arrangement must be one question's 3 pieces in reading order", () => {
+    const { game, byRole, grab, walkTo, last, all, pieceIdsOf } = setup();
     const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
-    collect(s, t);
-    walkTo(s, t);
-    game.openTerminal(s, t);
-    expect(last(s, "terminal:arrange").cards).toHaveLength(3);
-    game.arrange(s, [...pieceIds(s, t)].reverse());
+    for (const id of [...pieceIdsOf(0), pieceIdsOf(1)[0]]) grab(s, id);
+    walkTo(s, "library-1");
+    game.openTerminal(s, "library-1");
+    const [a, b, c] = pieceIdsOf(0);
+    game.arrange(s, [c, b, a]);
     expect(last(s, "terminal:question")).toBeUndefined();
-    game.arrange(s, pieceIds(s, t));
+    game.arrange(s, [a, b, pieceIdsOf(1)[0]]);
+    expect(last(s, "terminal:question")).toBeUndefined();
+    expect(all(s, "terminal:arrangeWrong")).toHaveLength(2);
+    game.arrange(s, [a, b, c]);
     const q = last(s, "terminal:question");
     expect(q.arrangedBy).toBe("you");
-    expect(QUESTIONS.map((x) => x.prompt)).toContain(q.prompt);
+    expect(q.prompt).toBe(game.questions[0].prompt);
+    expect(q.pieces).toEqual(game.questions[0].pieces);
   });
 
-  it("a hacked Study-Bot arranges a twisted question whose answer is its lie", () => {
-    const { game, byRole, tasksOf, walkTo, ready } = setup();
-    const bluffer = byRole("bluffer")[0];
+  it("Study-Bot needs a full question in the pool", () => {
+    const { game, byRole, grab, walkTo, pieceIdsOf } = setup();
     const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
-    walkTo(bluffer, t);
-    game.hack(bluffer, t);
-    const q = ready(s, t, "studybot");
-    const source = QUESTIONS.find((x) => x.twistedPrompt === q.prompt)!;
-    expect(source).toBeDefined();
+    grab(s, pieceIdsOf(0)[0]);
+    grab(s, pieceIdsOf(0)[1]);
+    grab(s, pieceIdsOf(1)[0]);
+    walkTo(s, "library-1");
+    game.openTerminal(s, "library-1");
+    expect(() => game.botArrange(s)).toThrow("Not enough pieces");
+  });
+
+  it("a hacked Study-Bot arranges a twisted question whose answer is its lie, with the real pieces shown", () => {
+    const { game, byRole, walkTo, solveSetup } = setup();
+    const b = byRole("bluffer")[0];
+    const s = byRole("student")[0];
+    walkTo(b, "library-1");
+    game.hack(b, "library-1");
+    const q = solveSetup(s, 0, "library-1", "studybot");
+    const source = game.questions[0];
+    expect(q.prompt).toBe(source.twistedPrompt);
+    expect(q.pieces).toEqual(source.pieces);
     expect(q.choices[q.botPick]).toBe(source.choices[source.lieIndex]);
+  });
+
+  it("a correct answer uses up the pieces; a wrong answer or a strike gives them back", () => {
+    const { game, byRole, walkTo, bag, last, solveSetup, pieceIdsOf } = setup();
+    const b = byRole("bluffer")[0];
+    const s = byRole("student")[0];
+    walkTo(b, "library-1");
+    game.hack(b, "library-1");
+    let q = solveSetup(s, 0);
+    game.answer(s, q.botPick);
+    expect(last(s, "terminal:result").outcome).toBe("strike");
+    expect(game.strikes).toBe(1);
+    expect(bag(s)).toHaveLength(3);
+
+    game.openTerminal(s, "library-1");
+    game.arrange(s, pieceIdsOf(0));
+    q = last(s, "terminal:question");
+    game.answer(s, (q.botPick + 1) % 4);
+    expect(last(s, "terminal:result").outcome).toBe("wrong");
+    expect(bag(s)).toHaveLength(3);
+
+    game.openTerminal(s, "library-1");
+    game.arrange(s, pieceIdsOf(0));
+    game.answer(s, last(s, "terminal:question").botPick);
+    expect(last(s, "terminal:result").outcome).toBe("correct");
+    expect(bag(s)).toHaveLength(0);
+    expect(game.progress).toBe(1);
+  });
+
+  it("a leaver's pieces go back to where they were found", () => {
+    const { game, byRole, grab, floor, pieceIdsOf } = setup();
+    const s = byRole("student")[0];
+    const before = floor().find((f) => f.id === pieceIdsOf(0)[0])!;
+    grab(s, pieceIdsOf(0)[0]);
+    game.removePlayer(s);
+    expect(floor().find((f) => f.id === pieceIdsOf(0)[0])).toEqual(before);
+  });
+
+  it("leaving a terminal costs nothing: no strike, no progress, pieces kept", () => {
+    const { game, byRole, walkTo, bag, last, solveSetup, pieceIdsOf } = setup();
+    const b = byRole("bluffer")[0];
+    const s = byRole("student")[0];
+    walkTo(b, "library-1");
+    game.hack(b, "library-1");
+    solveSetup(s, 0);
+    game.close(s);
+    expect(game.strikes).toBe(0);
+    expect(game.progress).toBe(0);
+    expect(bag(s)).toHaveLength(3);
+    expect(last(s, "terminal:result")).toBeUndefined();
+    // And the terminal can be opened again afterwards.
+    game.openTerminal(s, "library-1");
+    game.arrange(s, pieceIdsOf(0));
+    expect(last(s, "terminal:question").arrangedBy).toBe("you");
+  });
+
+  it("the Bluffer needs a pool of 3 like anyone, and gets no question without one", () => {
+    const { game, byRole, walkTo, last } = setup();
+    const b = byRole("bluffer")[0];
+    walkTo(b, "canteen-2");
+    expect(() => game.openTerminal(b, "canteen-2")).toThrow("Need at least 3 pieces");
+    expect(last(b, "terminal:question")).toBeUndefined();
+  });
+
+  it("the Bluffer never causes a strike, never uses up their own hack, and a correct answer still helps the class", () => {
+    const { game, byRole, walkTo, grab, last, pieceIdsOf, advance } = setup();
+    const b = byRole("bluffer")[0];
+    const s = byRole("student")[0];
+    // The Bluffer carries 2 pieces; a student brings the third.
+    grab(b, pieceIdsOf(0)[0]);
+    grab(b, pieceIdsOf(0)[1]);
+    grab(s, pieceIdsOf(0)[2]);
+    walkTo(b, "library-1");
+    walkTo(s, "library-1");
+    game.hack(b, "library-1");
+    game.openTerminal(b, "library-1");
+    game.botArrange(b);
+    const q = last(b, "terminal:question");
+    expect(q.prompt).toBe(game.questions[0].prompt); // not twisted: the hack is still waiting
+    game.answer(b, (q.botPick + 1) % 4);
+    expect(game.strikes).toBe(0);
+
+    // The hack is still there for the next classmate.
+    game.openTerminal(s, "library-1");
+    game.botArrange(s);
+    expect(last(s, "terminal:question").prompt).toBe(game.questions[0].twistedPrompt);
+    game.close(s);
+
+    // A correct Bluffer answer counts for the class.
+    advance(1);
+    game.openTerminal(b, "library-1");
+    game.arrange(b, pieceIdsOf(0));
+    game.answer(b, last(b, "terminal:question").botPick);
+    expect(last(b, "terminal:result").outcome).toBe("correct");
+    expect(game.progress).toBe(1);
   });
 });
 
@@ -180,79 +303,32 @@ describe("GameRoom", () => {
   });
 
   it("never sends the correct answer or the lie index with a question", () => {
-    const { byRole, tasksOf, ready } = setup();
-    const s = byRole("student")[0];
-    const q = ready(s, tasksOf(s)[0]);
-    expect(Object.keys(q).sort()).toEqual(["arrangedBy", "botPick", "choices", "confidence", "msLeft", "prompt", "subject", "terminalId"]);
-  });
-
-  it("rejects opening from too far away", () => {
-    const { game, byRole, tasksOf } = setup();
-    const student = byRole("student")[0];
-    expect(() => game.openTerminal(student, tasksOf(student)[0])).toThrow(ActionError);
-  });
-
-  it("a correct answer completes the task and adds progress", () => {
-    const { game, byRole, tasksOf, last, ready } = setup();
-    const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
-    const q = ready(s, t);
-    game.answer(s, q.botPick); // not hacked, so Study-Bot is right
-    expect(last(s, "terminal:result").outcome).toBe("correct");
-    expect(game.progress).toBe(1);
-    expect(tasksOf(s)).not.toContain(t);
-  });
-
-  it("a hacked terminal recommends the lie, trusting it is a strike, and the hack is used up", () => {
-    const { game, byRole, tasksOf, walkTo, last, ready, pieceIds } = setup();
-    const bluffer = byRole("bluffer")[0];
-    const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
-    walkTo(bluffer, t);
-    game.hack(bluffer, t);
-    const q = ready(s, t);
-    game.answer(s, q.botPick);
-    expect(last(s, "terminal:result").outcome).toBe("strike");
-    expect(game.strikes).toBe(1);
-    expect(tasksOf(s)).toContain(t);
-
-    // Pieces are kept, so the retry goes straight to arranging.
-    game.openTerminal(s, t);
-    game.arrange(s, pieceIds(s, t));
-    game.answer(s, last(s, "terminal:question").botPick);
-    expect(last(s, "terminal:result").outcome).toBe("correct");
-  });
-
-  it("a wrong answer keeps the task without a strike", () => {
-    const { game, byRole, tasksOf, last, ready } = setup();
-    const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
-    const q = ready(s, t);
-    game.answer(s, (q.botPick + 1) % 4);
-    expect(last(s, "terminal:result").outcome).toBe("wrong");
-    expect(game.strikes).toBe(0);
-    expect(tasksOf(s)).toContain(t);
+    const { byRole, solveSetup } = setup();
+    const q = solveSetup(byRole("student")[0], 0);
+    expect(Object.keys(q).sort()).toEqual(
+      ["arrangedBy", "botPick", "choices", "confidence", "msLeft", "pieces", "prompt", "subject", "terminalId"],
+    );
   });
 
   it("running out of time counts as wrong, even while still arranging", () => {
-    const { game, byRole, tasksOf, walkTo, collect, last, advance } = setup();
+    const { game, byRole, grab, walkTo, last, advance, pieceIdsOf, bag } = setup();
     const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
-    collect(s, t);
-    walkTo(s, t);
-    game.openTerminal(s, t);
+    for (const id of pieceIdsOf(0)) grab(s, id);
+    walkTo(s, "library-1");
+    game.openTerminal(s, "library-1");
     advance(29_000);
     game.tick();
     expect(last(s, "terminal:result")).toBeUndefined();
     advance(2_000);
     game.tick();
     expect(last(s, "terminal:result").outcome).toBe("wrong");
+    expect(bag(s)).toHaveLength(3);
   });
 
   it("double-check costs time and sends a hint", () => {
-    const { game, byRole, tasksOf, last, ready } = setup();
+    const { game, byRole, last, solveSetup } = setup();
     const s = byRole("student")[0];
-    ready(s, tasksOf(s)[0]);
+    solveSetup(s, 0);
     game.doubleCheck(s);
     const hint = last(s, "terminal:hint");
     expect(hint.hint.length).toBeGreaterThan(0);
@@ -260,54 +336,42 @@ describe("GameRoom", () => {
   });
 
   it("the Fact-Checker can verify once, and it tells the truth about a hacked answer", () => {
-    const { game, byRole, tasksOf, walkTo, last, ready } = setup();
+    const { game, byRole, walkTo, last, solveSetup } = setup();
     const fc = byRole("factChecker")[0];
-    const bluffer = byRole("bluffer")[0];
-    const t = tasksOf(fc)[0];
-    walkTo(bluffer, t);
-    game.hack(bluffer, t);
-    ready(fc, t);
+    const b = byRole("bluffer")[0];
+    walkTo(b, "library-1");
+    game.hack(b, "library-1");
+    solveSetup(fc, 0);
     game.verify(fc);
     expect(last(fc, "terminal:verifyResult").botIsRight).toBe(false);
     expect(() => game.verify(fc)).toThrow("already used");
-    const student = byRole("student")[0];
-    expect(() => game.verify(student)).toThrow("Only the Fact-Checker");
+    expect(() => game.verify(byRole("student")[0])).toThrow("Only the Fact-Checker");
   });
 
   it("hacking has a cooldown and needs the Bluffer to be close", () => {
     const { game, byRole, walkTo, advance } = setup();
-    const bluffer = byRole("bluffer")[0];
-    expect(() => game.hack(bluffer, "library-1")).toThrow("Walk closer");
-    walkTo(bluffer, "library-1");
-    game.hack(bluffer, "library-1");
-    walkTo(bluffer, "lab-1");
-    expect(() => game.hack(bluffer, "lab-1")).toThrow("Hack ready in 30s");
+    const b = byRole("bluffer")[0];
+    expect(() => game.hack(b, "library-1")).toThrow("Walk closer");
+    walkTo(b, "library-1");
+    game.hack(b, "library-1");
+    walkTo(b, "lab-1");
+    expect(() => game.hack(b, "lab-1")).toThrow("Hack ready in 30s");
     advance(30_000);
-    expect(() => game.hack(bluffer, "lab-1")).not.toThrow();
-  });
-
-  it("the Bluffer can fake a task at any terminal without pieces", () => {
-    const { game, byRole, walkTo, last } = setup();
-    const bluffer = byRole("bluffer")[0];
-    walkTo(bluffer, "canteen-2");
-    game.openTerminal(bluffer, "canteen-2");
-    game.answer(bluffer, 0);
-    expect(last(bluffer, "terminal:result").outcome).toBe("faked");
+    expect(() => game.hack(b, "lab-1")).not.toThrow();
   });
 
   it("the Bluffer wins at 3 strikes", () => {
-    const { game, byRole, tasksOf, walkTo, last, ready, advance, pieceIds } = setup();
-    const bluffer = byRole("bluffer")[0];
+    const { game, byRole, walkTo, last, solveSetup, advance, pieceIdsOf } = setup();
+    const b = byRole("bluffer")[0];
     const s = byRole("student")[0];
-    const t = tasksOf(s)[0];
     for (let i = 0; i < 3; i++) {
-      walkTo(bluffer, t);
-      game.hack(bluffer, t);
-      if (i === 0) ready(s, t);
+      walkTo(b, "library-1");
+      game.hack(b, "library-1");
+      if (i === 0) solveSetup(s, 0);
       else {
-        walkTo(s, t);
-        game.openTerminal(s, t);
-        game.arrange(s, pieceIds(s, t));
+        walkTo(s, "library-1");
+        game.openTerminal(s, "library-1");
+        game.arrange(s, pieceIdsOf(0));
       }
       game.answer(s, last(s, "terminal:question").botPick);
       advance(30_000);
@@ -315,15 +379,15 @@ describe("GameRoom", () => {
     expect(game.gameOver()?.winner).toBe("bluffer");
   });
 
-  it("the class wins when every living classmate finishes their tasks", () => {
-    const { game, byRole, tasksOf, ready } = setup();
-    for (const id of [...byRole("student"), ...byRole("factChecker")]) {
-      for (const t of [...tasksOf(id)]) {
-        const q = ready(id, t);
-        game.answer(id, q.botPick);
-      }
-    }
-    expect(game.progress).toBe(9);
+  it("the class wins when every question is solved", () => {
+    const { game, byRole, last, solveSetup } = setup();
+    const s = byRole("student")[0];
+    game.questions.forEach((_, i) => {
+      const q = solveSetup(s, i);
+      game.answer(s, q.botPick);
+      expect(last(s, "terminal:result").outcome).toBe("correct");
+    });
+    expect(game.progress).toBe(6);
     expect(game.gameOver()?.winner).toBe("class");
   });
 

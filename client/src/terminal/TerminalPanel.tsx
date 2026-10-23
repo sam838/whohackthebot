@@ -2,15 +2,14 @@ import type { ArrangeCard } from "@whtb/shared/types";
 import { useEffect, useRef, useState } from "react";
 import { terminalLabel } from "../hud/labels";
 import { socket } from "../net/socket";
-import { useGame, type OpenArrange, type OpenQuestion } from "../net/store";
+import { closePanel, useGame, type OpenArrange, type OpenQuestion } from "../net/store";
 
 const LETTERS = ["A", "B", "C", "D"];
 
 const OUTCOME_TEXT = {
   correct: { title: "Correct!", line: "Task done.", tone: "good" },
   strike: { title: "Study-Bot lied!", line: "Strike for the class.", tone: "bad" },
-  wrong: { title: "Wrong answer", line: "This task stays on your list. Try again later.", tone: "meh" },
-  faked: { title: "Looking busy…", line: "Nobody saw anything.", tone: "meh" },
+  wrong: { title: "Wrong answer", line: "The pieces go back to whoever brought them. Try again later.", tone: "meh" },
 } as const;
 
 function Countdown({ endsAt, totalMs, frozen }: { endsAt: number; totalMs: number; frozen: boolean }) {
@@ -66,13 +65,14 @@ function ArrangeStep({ a }: { a: OpenArrange }) {
   }, [a.wrongCount, a.terminalId]);
 
   const remaining = a.cards.filter((c) => !order.includes(c));
-  const full = order.length === a.cards.length;
+  const full = order.length === 3;
 
   return (
     <>
-      <p className="panel-prompt">Put your pieces in order</p>
+      <p className="panel-prompt">Pick 3 pieces and put them in order</p>
+      <p className="pool-note">Pool: pieces from everyone standing here ({a.cards.length})</p>
       <div className="slots">
-        {a.cards.map((_, i) => (
+        {[0, 1, 2].map((i) => (
           <button
             key={i}
             className={`slot ${order[i] ? "filled" : ""}`}
@@ -86,7 +86,7 @@ function ArrangeStep({ a }: { a: OpenArrange }) {
       {a.wrongCount > 0 && order.length === 0 && <p className="arrange-wrong">That doesn't read right. Try another order.</p>}
       <div className="cards">
         {remaining.map((c) => (
-          <button key={c.id} className="card-piece" disabled={sent} onClick={() => setOrder([...order, c])}>
+          <button key={c.id} className="card-piece" disabled={sent || full} onClick={() => setOrder([...order, c])}>
             {c.text}
           </button>
         ))}
@@ -115,16 +115,13 @@ function ArrangeStep({ a }: { a: OpenArrange }) {
 function AnswerStep({ q }: { q: OpenQuestion }) {
   const role = useGame((s) => s.role);
   const verifyUsed = useGame((s) => s.verifyUsed);
-  const myPieces = useGame((s) => s.myPieces);
   const [picked, setPicked] = useState<number | undefined>();
 
   useEffect(() => setPicked(undefined), [q.prompt, q.terminalId]);
 
   const answered = picked !== undefined || q.outcome !== undefined;
   const result = q.outcome && OUTCOME_TEXT[q.outcome];
-  const pieces = Object.values(myPieces)
-    .filter((p) => p.terminalId === q.terminalId)
-    .map((p) => p.text);
+  const pieces = q.pieces;
 
   function answer(i: number) {
     if (answered) return;
@@ -201,8 +198,19 @@ export function TerminalPanel() {
   const arrange = useGame((s) => s.arrange);
   const q = useGame((s) => s.question);
   const open = arrange ?? q;
+  const frozen = Boolean(q && q.outcome !== undefined);
+
+  // Esc leaves the terminal on desktop.
+  useEffect(() => {
+    if (!open || frozen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePanel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, frozen]);
+
   if (!open) return null;
-  const frozen = Boolean(q && (q.outcome !== undefined));
 
   return (
     <div className="panel-backdrop">
@@ -210,6 +218,11 @@ export function TerminalPanel() {
         <div className="panel-top">
           <span className="panel-place">{terminalLabel(open.terminalId)}</span>
           {q && <span className="panel-subject">{q.subject}</span>}
+          {!frozen && (
+            <button className="panel-leave" onClick={closePanel} aria-label="Leave terminal">
+              Leave ✕
+            </button>
+          )}
         </div>
         <Countdown endsAt={open.endsAt} totalMs={open.totalMs} frozen={frozen} />
         {arrange ? <ArrangeStep a={arrange} /> : q && <AnswerStep q={q} />}

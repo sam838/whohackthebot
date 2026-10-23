@@ -526,6 +526,22 @@ body {
   font-weight: 700;
 }
 
+.panel-leave {
+  margin-left: auto;
+  font: 700 13px var(--body);
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.panel-top {
+  gap: 8px;
+  align-items: center;
+}
+
 .panel-subject {
   background: var(--ink);
   color: #fff;
@@ -821,4 +837,34 @@ body {
   border-radius: 8px;
   padding: 0 6px;
   font-weight: 700;
+}
+
+.pool-note {
+  margin: -6px 0 0;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.bag-title {
+  font-weight: 700;
+  margin-top: 4px !important;
+}
+
+.tasklist-body ul.bag {
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+}
+
+.tasklist-body ul.bag li {
+  background: #fffdf4;
+  border: 2px solid rgba(43, 36, 64, 0.25);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.empty-bag,
+.team-tip {
+  opacity: 0.75;
 }

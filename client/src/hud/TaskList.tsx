@@ -1,11 +1,12 @@
+import { BLUFFER_MAX_PIECES } from "@whtb/shared/constants";
 import { useState } from "react";
 import { useGame } from "../net/store";
-import { ROLE_NAMES, ROLE_REMINDERS, terminalLabel } from "./labels";
+import { ROLE_NAMES, ROLE_REMINDERS } from "./labels";
 
-/** Your role (temporary until the role book) and your tasks with piece counts. */
+/** Your role (temporary until the role book) and the pieces in your bag. */
 export function TaskList() {
   const role = useGame((s) => s.role);
-  const tasks = useGame((s) => s.tasks);
+  const bag = useGame((s) => s.bag);
   const [open, setOpen] = useState(true);
   if (!role) return null;
   const isBluffer = role === "bluffer";
@@ -19,24 +20,20 @@ export function TaskList() {
       {open && (
         <div className="tasklist-body">
           <p className="reminder">{ROLE_REMINDERS[role]}</p>
-          {isBluffer && <p className="fake-note">You can't see question pieces. Fake these tasks so you look busy:</p>}
-          {tasks.length === 0 ? (
-            <p className="done">All your tasks are done!</p>
+          <p className="bag-title">
+            Your bag ({bag.length}
+            {isBluffer ? `/${BLUFFER_MAX_PIECES}` : ""})
+          </p>
+          {bag.length === 0 ? (
+            <p className="empty-bag">Walk over paper scraps to pick them up.</p>
           ) : (
-            <ul>
-              {tasks.map((t) => {
-                const ready = t.found === t.total;
-                return (
-                  <li key={t.terminalId} className={ready ? "ready" : ""}>
-                    {terminalLabel(t.terminalId)}
-                    {!isBluffer && (
-                      <span className="pieces-count">{ready ? " → go!" : ` · pieces ${t.found}/${t.total}`}</span>
-                    )}
-                  </li>
-                );
-              })}
+            <ul className="bag">
+              {bag.map((p) => (
+                <li key={p.id}>“{p.text}”</li>
+              ))}
             </ul>
           )}
+          {bag.length > 0 && <p className="team-tip">Meet classmates at a terminal to pool pieces.</p>}
         </div>
       )}
     </div>

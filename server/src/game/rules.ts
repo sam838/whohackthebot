@@ -1,6 +1,6 @@
-// Pure game rules (spec.md > Game Server): roles, tasks, win checks.
+// Pure game rules (spec.md > Game Server): roles, win checks.
 
-import { STRIKES_TO_LOSE, TASKS_PER_PLAYER } from "@whtb/shared/constants";
+import { STRIKES_TO_LOSE } from "@whtb/shared/constants";
 import type { Role, Winner } from "@whtb/shared/types";
 
 export type Random = () => number;
@@ -25,17 +25,12 @@ export function assignRoles(playerIds: readonly string[], random: Random): Map<s
   return roles;
 }
 
-/** Each player gets TASKS_PER_PLAYER different terminals. The Bluffer's are fake. */
-export function assignTasks(playerIds: readonly string[], terminalIds: readonly string[], random: Random): Map<string, string[]> {
-  return new Map(playerIds.map((id) => [id, shuffle(terminalIds, random).slice(0, TASKS_PER_PLAYER)]));
-}
-
 export interface WinInput {
   strikes: number;
   blufferAlive: boolean;
   aliveCount: number;
-  /** Unfinished tasks of living Students and the Fact-Checker. */
-  tasksRemaining: number;
+  /** Class questions not yet answered correctly. */
+  questionsRemaining: number;
 }
 
 export interface WinResult {
@@ -47,6 +42,6 @@ export function checkWinner(s: WinInput): WinResult | undefined {
   if (!s.blufferAlive) return { winner: "class", reason: "The Bluffer was kicked out of school!" };
   if (s.strikes >= STRIKES_TO_LOSE) return { winner: "bluffer", reason: "The class trusted Study-Bot's lies 3 times." };
   if (s.aliveCount <= 2) return { winner: "bluffer", reason: "Only the Bluffer and one classmate are left." };
-  if (s.tasksRemaining === 0) return { winner: "class", reason: "The class finished every task." };
+  if (s.questionsRemaining === 0) return { winner: "class", reason: "The class solved every question." };
   return undefined;
 }

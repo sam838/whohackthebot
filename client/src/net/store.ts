@@ -7,7 +7,6 @@ import type {
   LobbyState,
   PieceInfo,
   Role,
-  TaskInfo,
   TerminalQuestion,
 } from "@whtb/shared/types";
 import { create } from "zustand";
@@ -46,11 +45,10 @@ interface GameStore {
   game: GameStatePublic | undefined;
   menuScreen: "menu" | "join";
   role: Role | undefined;
-  tasks: TaskInfo[];
-  /** Uncollected pieces you can see (empty for the Bluffer). */
+  /** Pieces you carry, with their text. */
+  bag: ArrangeCard[];
+  /** Pieces lying on the floor (text unknown until picked up). */
   pieces: PieceInfo[];
-  /** Text of pieces you've picked up. */
-  myPieces: Record<string, { terminalId: string; text: string }>;
   arrange: OpenArrange | undefined;
   question: OpenQuestion | undefined;
   verifyUsed: boolean;
@@ -66,9 +64,8 @@ interface GameStore {
 
 const freshGame = {
   role: undefined,
-  tasks: [],
+  bag: [],
   pieces: [],
-  myPieces: {},
   arrange: undefined,
   question: undefined,
   verifyUsed: false,
@@ -95,6 +92,12 @@ export function currentScreen(s: GameStore): Screen {
   if (s.game) return "playing";
   if (s.lobby) return "lobby";
   return s.menuScreen;
+}
+
+/** Walk away from the terminal panel without answering. */
+export function closePanel() {
+  socket.emit("terminal:close");
+  useGame.setState({ arrange: undefined, question: undefined });
 }
 
 /** True while a terminal panel (arranging or answering) is open. */
@@ -129,12 +132,9 @@ socket.on("error", (error) => {
 });
 
 socket.on("game:role", ({ role }) => useGame.setState({ role }));
-socket.on("game:tasks", ({ tasks }) => useGame.setState({ tasks }));
+socket.on("game:bag", ({ pieces }) => useGame.setState({ bag: pieces }));
 socket.on("pieces:state", ({ pieces }) => useGame.setState({ pieces }));
-socket.on("piece:collected", ({ pieceId, terminalId, text }) => {
-  useGame.setState((s) => ({ myPieces: { ...s.myPieces, [pieceId]: { terminalId, text } } }));
-  showNotice(`Found a piece: “${text}”`);
-});
+socket.on("piece:collected", ({ text }) => showNotice(`Found a piece: “${text}”`));
 socket.on("terminal:arrange", ({ terminalId, cards, msLeft }) =>
   useGame.setState({ arrange: { terminalId, cards, endsAt: performance.now() + msLeft, totalMs: msLeft, wrongCount: 0 } }),
 );
@@ -160,7 +160,7 @@ socket.on("terminal:result", ({ outcome }) => {
   if (!q) {
     // Time ran out while still arranging.
     useGame.setState({ arrange: undefined });
-    showNotice("Time's up! Your pieces are safe. Try the terminal again.");
+    showNotice("Time's up! Everyone keeps their pieces. Try again.");
     return;
   }
   const shown = { ...q, outcome };

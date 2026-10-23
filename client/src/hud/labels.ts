@@ -16,7 +16,7 @@ export const ROLE_NAMES: Record<Role, string> = {
 
 /** One-line reminder shown in the HUD until the role book arrives in slice 6. */
 export const ROLE_REMINDERS: Record<Role, string> = {
-  student: "Find your question pieces, then answer at terminals. Study-Bot might be hacked.",
-  bluffer: "Hack terminals so Study-Bot lies. Blend in.",
-  factChecker: "Find your pieces. You can Verify one answer. Stay hidden.",
+  student: "Collect pieces, team up at a terminal, build questions. Study-Bot might be hacked.",
+  bluffer: "Hack terminals so Study-Bot lies. Collect and solve like everyone to blend in (max 2 pieces).",
+  factChecker: "Collect pieces and team up. You can Verify one answer. Stay hidden.",
 };

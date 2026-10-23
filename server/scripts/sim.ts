@@ -60,11 +60,9 @@ async function main() {
     console.log("start");
     const players = [host, a, b, c];
     const roleMsgs = new Map<Client, string[]>(players.map((s) => [s, []]));
-    const taskMsgs = new Map<Client, string[]>();
     const pieceMsgs = new Map<Client, Array<Record<string, unknown>>>(players.map((s) => [s, []]));
     for (const s of players) {
       s.on("game:role", ({ role }) => roleMsgs.get(s)!.push(role));
-      s.on("game:tasks", ({ tasks }) => taskMsgs.set(s, tasks.map((t) => t.terminalId)));
       s.on("pieces:state", ({ pieces }) => pieceMsgs.set(s, pieces as unknown as Array<Record<string, unknown>>));
     }
     const started = Promise.all(players.map((s) => once<{ phase: string }>(s, "game:state")));
@@ -79,45 +77,46 @@ async function main() {
     check(roles.filter((r) => r === "factChecker").length === 1, "exactly one Fact-Checker");
     const roleOf = (s: Client) => roleMsgs.get(s)![0];
     const bluffer = players.find((s) => roleOf(s) === "bluffer")!;
-    const student = players.find((s) => roleOf(s) === "student")!;
+    const [student, helper] = players.filter((s) => roleOf(s) !== "bluffer");
 
-    console.log("question pieces");
-    check(pieceMsgs.get(bluffer)!.length === 0, "the Bluffer received no piece positions");
-    const seenPieces = pieceMsgs.get(student)!;
-    // 3 classmates × 3 tasks × 3 pieces.
-    check(seenPieces.length === 27 && seenPieces.every((p) => !("text" in p)), "students see all 27 pieces, with no text");
-    const target = taskMsgs.get(student)![0];
-    const mine = seenPieces.filter((p) => String(p.id).startsWith(`${student.id}:${target}:`));
-    check(mine.length === 3, "the student's first task has 3 pieces to find");
-    for (const p of mine) {
-      student.emit("move", { x: p.x as number, z: p.z as number, heading: 0 });
+    console.log("shared question pieces");
+    const floor = pieceMsgs.get(student)!;
+    // 3 classmates × 2 questions × 3 pieces.
+    check(floor.length === 18 && floor.every((p) => !("text" in p)), "everyone sees 18 pieces on the floor, with no text");
+    check(pieceMsgs.get(bluffer)!.length === 18, "the Bluffer sees the pieces too (they can hoard)");
+    const walkAndGrab = async (who: Client, piece: Record<string, unknown>) => {
+      who.emit("move", { x: piece.x as number, z: piece.z as number, heading: 0 });
       await new Promise((r) => setTimeout(r, 120));
-      const got = once<{ pieceId: string }>(student, "piece:collected");
-      student.emit("piece:pickup", { pieceId: String(p.id) });
-      await got;
-    }
-    check(true, "picked up all 3 pieces by walking onto them");
+      const got = once<{ text: string }>(who, "piece:collected");
+      who.emit("piece:pickup", { pieceId: String(piece.id) });
+      return (await got).text;
+    };
+    // The helper grabs one piece; the student grabs all the others.
+    await walkAndGrab(helper, floor[0]);
+    for (const piece of floor.slice(1)) await walkAndGrab(student, piece);
+    check(true, "picked up pieces by walking onto them");
 
-    console.log("Study-Bot lies");
+    console.log("teamwork at a terminal");
     const { TERMINALS } = await import("@whtb/shared/map");
-    const spot = TERMINALS.find((t) => t.id === target)!;
-    const standAt = { x: spot.x, z: spot.z + 0.9, heading: 0 };
-    bluffer.emit("move", standAt);
-    student.emit("move", standAt);
+    const target = TERMINALS[0].id;
+    const standAt = { x: TERMINALS[0].x, z: TERMINALS[0].z + 0.9, heading: 0 };
+    for (const s of [bluffer, student, helper]) s.emit("move", standAt);
     await new Promise((r) => setTimeout(r, 150));
     const hacked = once<{ terminalId: string }>(bluffer, "terminal:hacked");
     bluffer.emit("terminal:hack", { terminalId: target });
-    check((await hacked).terminalId === target, "Bluffer hacked the student's terminal");
+    check((await hacked).terminalId === target, "Bluffer hacked the terminal");
 
     const arrangeStep = once<{ cards: unknown[] }>(student, "terminal:arrange");
     student.emit("terminal:open", { terminalId: target });
-    check((await arrangeStep).cards.length === 3, "terminal opens to the arrange step");
+    check((await arrangeStep).cards.length === 18, "the pool includes the helper's piece (17 + 1)");
     const question = once<Record<string, unknown>>(student, "terminal:question");
     student.emit("terminal:botArrange");
     const q = await question;
     check(!("correctIndex" in q) && !("lieIndex" in q) && !("correct" in q), "question carries no correct answer");
     const { QUESTIONS } = await import("@whtb/shared/questions");
-    check(QUESTIONS.some((x) => x.twistedPrompt === q.prompt), "hacked Study-Bot arranged a twisted question");
+    const source = QUESTIONS.find((x) => x.twistedPrompt === q.prompt);
+    check(Boolean(source), "hacked Study-Bot arranged a twisted question");
+    check(JSON.stringify(q.pieces) === JSON.stringify(source!.pieces), "the real pieces are shown under it");
     const strikeSeen = Promise.all(
       players.map((s) => once<{ strikes: number }>(s, "game:state", (g) => g.strikes === 1)),
     );

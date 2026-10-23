@@ -4,6 +4,10 @@
 export const MIN_PLAYERS = 4;
 export const MAX_PLAYERS = 5;
 export const TASKS_PER_PLAYER = 3;
+/** Class questions to solve per non-Bluffer (prd.md > Question Pieces). */
+export const QUESTIONS_PER_CLASSMATE = 2;
+/** The Bluffer can hoard at most this many pieces at once. */
+export const BLUFFER_MAX_PIECES = 2;
 export const STRIKES_TO_LOSE = 3;
 
 /** Time to arrange and answer once a terminal is open. */

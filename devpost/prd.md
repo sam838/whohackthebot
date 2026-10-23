@@ -17,8 +17,8 @@ Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
 4. In the **Lobby**, everyone sees the code and the list of players. The host presses **Start** once at least **4 players** are in.
 5. **Role Reveal:** everyone appears seated in the classroom. Each player opens a book showing their character's picture and secret role: **Student**, **Bluffer**, or **Fact-Checker**. A "quick facts" box types out what the role does, with a typing sound.
 6. **Play:** players move with an on-screen **joystick** around a 2.5D cartoon school, visiting **Study-Bot terminals** in different rooms to complete their tasks.
-7. **Collect question pieces:** each task's question is split into 3 pieces hidden around the school. Everyone except the Bluffer can see the pieces; you can only pick up your own.
-8. **At a terminal:** with all 3 pieces, arrange them into the question yourself, or let Study-Bot arrange it instantly. Then a timed multiple-choice question appears and Study-Bot confidently recommends one option. The player picks an answer, either trusting Study-Bot or using **Double-check** first.
+7. **Collect question pieces:** the class's questions are split into pieces scattered around the school. Anyone can pick up any piece (the Bluffer too, to hoard them).
+8. **At a terminal:** classmates standing together pool their pieces; whoever presses Use arranges 3 into a question, or lets Study-Bot arrange it. Then a timed multiple-choice question appears and Study-Bot confidently recommends one option. The player picks an answer, either trusting Study-Bot or using **Double-check** first.
 8. **Bluffer:** secretly hacks terminals so their next answer is a convincing lie, and pretends to do tasks.
 9. **Fact-Checker:** once per game, can verify whether Study-Bot's answer is TRUE or FALSE.
 10. A trusted lie adds a **strike**, shown to everyone. A correct answer adds class progress.
@@ -102,14 +102,18 @@ Source: `scope.md > The Unique Kernel`.
   - [ ] Questions are pre-written school-subject and trivia questions, each with a **plausible wrong answer** for when the terminal is hacked.
 
 ### Question Pieces
-*Added during `5-build` after the first hands-on checkpoint: a fast class could finish every task before the Bluffer mattered. Source: learner ("escape room", "arrange the question", "the bluffer cannot find the clue").*
-- As a Student or Fact-Checker, I want to hunt for the pieces of my questions so finishing tasks takes real searching and the Bluffer has time to act.
-  - [ ] Each of my tasks shows how many of its 3 pieces I've found.
-  - [ ] Pieces lie in different rooms; everyone except the Bluffer can see every piece, in its owner's color, but only the owner can pick one up (by walking over it).
-  - [ ] A terminal won't open my question until I have all 3 of its pieces.
-  - [ ] At the terminal I put the 3 pieces in order myself, or tap "Let Study-Bot arrange it."
-  - [ ] When the terminal is hacked, Study-Bot arranges a **believable wrong question** that its lie answers; arranging it myself shows the real question.
-  - [ ] The Bluffer sees no pieces at all, so in meetings they must bluff about where pieces were.
+*Added during `5-build` after the first hands-on checkpoint (a fast class could finish every task before the Bluffer mattered), then reworked into a shared, teamwork puzzle after slice 3b. Source: learner ("escape room", "arrange the question", "everyone can help arrange", "meet at terminal").*
+- The class shares a board of questions to solve: 2 per classmate (6 with 4 players, 8 with 5). This replaces personal task lists.
+- Each question is split into 3 pieces scattered across different rooms. Nobody owns a piece.
+- As a player, I want to pick up any piece and team up with classmates at a terminal so that solving questions takes cooperation and talk.
+  - [ ] Anyone can pick up any piece by walking over it; you only learn a piece's text once you hold it, and your bag shows what you carry.
+  - [ ] The Bluffer collects pieces like anyone (at most 2 at a time); their pieces pool like anyone's, so nobody can be cleared or exposed by a terminal test. The Bluffer can arrange and answer too, but can never cause a strike, and never uses up their own hack.
+  - [ ] At a terminal, the pieces of every classmate standing there are pooled, without showing who brought which.
+  - [ ] Whoever presses Use picks 3 pieces from the pool and puts them in order, or lets Study-Bot arrange a full question from the pool.
+  - [ ] When the terminal is hacked, Study-Bot arranges a **believable wrong question** that its lie answers; the 3 real pieces are shown underneath.
+  - [ ] A correct answer uses up those 3 pieces and adds class progress; a wrong answer or trusted lie returns them to whoever brought them.
+  - [ ] If a classmate leaves the game, their pieces return to their original spots.
+  - [ ] Any terminal can be used for any question.
 
 ### Bluffer: Hacking
 - [ ] At a terminal, the Bluffer sees a **Hack** action that only they can see.
@@ -167,7 +171,10 @@ Source: `scope.md > The Unique Kernel`.
 - **Device memory instead of Google sign-in** — "keep localstorage for now"; sign-in would add setup, a database, and a login before playing.
 - **Question pieces, escape-room style** — each question is split into 3 pieces hidden in different rooms; slows the rush and gives the Bluffer time.
 - **Study-Bot can arrange the question** — and arranges a believable wrong one when hacked, keeping the AI shortcut at the center.
-- **The Bluffer can't see pieces** — like Among Us impostors faking tasks, they must bluff about pieces in meetings (Werewolf-style).
+- **Shared pieces, meet at a terminal** — players pool what they found at a terminal; teamwork and alibis ("Rina and I solved it together").
+- **The Bluffer handles pieces exactly like everyone (max 2)** — the learner spotted that if the Bluffer's pieces never pool (or they can't pick any up), anyone could "prove it at the terminal" and the Bluffer would always lose. Catching them now relies on behavior and stories, not a mechanical test. Their answers never cause strikes; a correct one still helps the class.
+- **Leavers' pieces go home** — a classmate who leaves returns their pieces to where they were found.
+- **Verify stays TRUE/FALSE** — reconfirmed after slice 3b.
 - **Claims aren't verified** — anyone can claim a role, and nobody has to believe it.
 
 ## Assumptions to Confirm

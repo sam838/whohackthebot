@@ -156,12 +156,12 @@ PRD ref: `prd.md > Study-Bot Terminals (the kernel)`, `prd.md > Bluffer: Hacking
   - The result flash: "Correct!", "Study-Bot lied: strike!", or "Wrong. Try this task again later."
 
 ### Question Pieces (server + client)
-PRD ref: `prd.md > Question Pieces`. Added during `5-build` (slice 3b).
-- `shared/questions.ts`: each question gains `pieces` (3 ordered fragments that join into `prompt`) and `twistedPrompt` (a believable wrong question whose correct answer is the lie option).
-- `shared/map.ts`: `PIECE_SPOTS`, free floor points generated on a grid inside each room, minus anything that collides with furniture.
-- `GameRoom`: at start, each non-Bluffer task gets its own question, and its 3 pieces go to random spots in three different rooms. Pickup is checked by distance and owner. A terminal opens to an **arrange** step only when all 3 pieces are held. Arranging correctly, or asking Study-Bot, reveals the choices. A hacked Study-Bot arranges `twistedPrompt`.
-- Private messages: non-Bluffers get `pieces:state` (uncollected pieces with owner and position, **no text**). The owner gets the piece text on pickup. The Bluffer gets nothing.
-- Client: `game/Pieces3D.tsx` (paper scraps in the owner's color, yours glowing, auto-pickup when you walk over yours), task list shows `pieces 1/3`, and `TerminalPanel` gets an arrange step (tap cards in order, or "Let Study-Bot arrange it").
+PRD ref: `prd.md > Question Pieces`. Added in slice 3b, reworked into a shared puzzle in slice 3c.
+- `shared/questions.ts`: each question has `pieces` (3 ordered fragments joining into `prompt`) and `twistedPrompt` (a believable wrong question whose honest answer is the lie).
+- `shared/pieces.ts`: `PIECE_SPOTS`, free floor points on a grid inside each room.
+- `GameRoom`: picks 2 questions per classmate; each question's 3 pieces get home spots in three different rooms. A piece is on the floor, held by a player, or used. Pickup is checked by distance (the Bluffer holds at most 2). At a terminal, the pool is the pieces held by everyone alive standing within reach (the Bluffer included), snapshotted when Use is pressed. The Bluffer arranges and answers like anyone but can't cause a strike or use up their own hack. The opener's 3-piece arrangement must be one question's pieces in reading order. Study-Bot arranges only when a full question is in the pool, and uses `twistedPrompt` if hacked. Correct uses the pieces; anything else returns them. Leavers' pieces go back to their home spots.
+- Messages: everyone gets `pieces:state` (pieces on the floor: id and position, **no text**); the holder gets `game:bag` (their pieces with text).
+- Client: `game/Pieces3D.tsx` (paper scraps, auto-pickup by walking over), a bag and class board in the HUD, and `TerminalPanel` with a pool to pick 3 from (or "Let Study-Bot arrange it"); the answer step shows the 3 real pieces under the question.
 
 ### Meeting, Chat & Vote (client)
 PRD ref: `prd.md > Meetings and Voting`.
@@ -186,9 +186,9 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | C→S | `lobby:join` | `{code, name, character, color}` | |
 | C→S | `lobby:start` | — | Host only, 4–5 players |
 | C→S | `move` | `{x, z, heading}` | ~12/s, ignored unless `playing` |
-| C→S | `piece:pickup` | `{pieceId}` | Owner only, within reach |
-| C→S | `terminal:open` | `{terminalId}` | Must be within radius and hold all 3 pieces |
-| C→S | `terminal:arrange` | `{order: pieceIds[]}` | Player's own arrangement |
+| C→S | `piece:pickup` | `{pieceId}` | Within reach; Bluffer max 2 held |
+| C→S | `terminal:open` | `{terminalId}` | Within reach; pool of nearby classmates must hold 3+ pieces |
+| C→S | `terminal:arrange` | `{order: pieceIds[3]}` | 3 pool pieces in reading order |
 | C→S | `terminal:botArrange` | — | Ask Study-Bot to arrange |
 | C→S | `terminal:answer` | `{choiceIndex}` | |
 | C→S | `terminal:doubleCheck` | — | |
@@ -203,9 +203,9 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | S→C | `game:tasks` | `{terminalIds[]}` | **Private** |
 | S→C | `game:state` | `{phase, players[] (id, name, character, color, alive), strikes, progress, goal, meetingCaller?, phaseEndsAt?}` | Room. Never includes roles |
 | S→C | `positions` | `{[id]: {x, z, heading}}` | Room, ~12/s |
-| S→C | `pieces:state` | `{pieces: {id, ownerId, x, z}[]}` | **Non-Bluffers only**, no text |
-| S→C | `piece:collected` | `{pieceId, terminalId, text}` | **Private** to the owner |
-| S→C | `terminal:arrange` | `{terminalId, cards: {id, text}[], msLeft}` | **Private**: shuffled pieces to order |
+| S→C | `pieces:state` | `{pieces: {id, x, z}[]}` | Everyone; pieces on the floor, no text |
+| S→C | `game:bag` | `{pieces: {id, text}[]}` | **Private**: what you carry |
+| S→C | `terminal:arrange` | `{terminalId, cards: {id, text}[], msLeft}` | **Private**: the shuffled pool |
 | S→C | `terminal:arrangeWrong` | — | Private: try again |
 | S→C | `terminal:question` | `{prompt, choices[4], botPick, deadline}` | **Private**. No correct answer included |
 | S→C | `terminal:hint` | `{hint, deadline}` | Private |

@@ -34,18 +34,9 @@ export interface PlayerPosition {
   heading: number;
 }
 
-/** One of your tasks: a terminal, and how many of its question pieces you hold. */
-export interface TaskInfo {
-  terminalId: string;
-  found: number;
-  /** 0 for the Bluffer's fake tasks. */
-  total: number;
-}
-
-/** A question piece lying in the school. Its text is only revealed to its owner on pickup. */
+/** A question piece lying on the floor. Its text is only revealed to whoever picks it up. */
 export interface PieceInfo {
   id: string;
-  ownerId: string;
   x: number;
   z: number;
 }
@@ -62,6 +53,8 @@ export interface TerminalQuestion {
   /** The real question, or a twisted one if a hacked Study-Bot arranged it. */
   prompt: string;
   arrangedBy: "you" | "studybot" | "none";
+  /** The 3 real pieces this question was built from, in order (empty for the Bluffer). */
+  pieces: string[];
   choices: string[];
   /** The option Study-Bot recommends: correct, or the lie if the terminal was hacked. */
   botPick: number;
@@ -70,7 +63,7 @@ export interface TerminalQuestion {
   msLeft: number;
 }
 
-export type AnswerOutcome = "correct" | "strike" | "wrong" | "faked";
+export type AnswerOutcome = "correct" | "strike" | "wrong";
 
 export interface GameOver {
   winner: Winner;
@@ -88,7 +81,8 @@ export type ErrorCode =
   | "TOO_FAR"
   | "NOT_ALLOWED"
   | "NO_TASK_HERE"
-  | "COOLDOWN";
+  | "COOLDOWN"
+  | "HANDS_FULL";
 
 export interface GameError {
   code: ErrorCode;

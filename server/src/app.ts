@@ -107,6 +107,7 @@ export function createApp() {
     socket.on("terminal:open", (p) => act((g) => g.openTerminal(socket.id, String(p?.terminalId))));
     socket.on("terminal:arrange", (p) => act((g) => g.arrange(socket.id, Array.isArray(p?.order) ? p.order.map(String) : [])));
     socket.on("terminal:botArrange", () => act((g) => g.botArrange(socket.id)));
+    socket.on("terminal:close", () => act((g) => g.close(socket.id)));
     socket.on("terminal:answer", (p) =>
       act((g) => g.answer(socket.id, Number.isInteger(p?.choiceIndex) ? p.choiceIndex : null)),
     );
