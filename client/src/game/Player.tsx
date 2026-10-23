@@ -22,6 +22,9 @@ export function Player({ color, body, isYou }: PlayerProps) {
   useFrame((_, delta) => {
     const b = body.current;
     const g = group.current!;
+    // A remote player has no body until their first position arrives.
+    g.visible = Boolean(b);
+    if (!b) return;
     if (b.moving) bob.current += delta * 12;
     else bob.current = 0;
     g.position.set(b.x, Math.abs(Math.sin(bob.current)) * 0.08, b.z);

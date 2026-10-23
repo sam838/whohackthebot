@@ -19,7 +19,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: Run `npm run dev`, open `http://localhost:5173` in a desktop window, and walk with WASD from the classroom through a doorway into the Library. Then open the same address on your phone (same Wi-Fi, using the network URL Vite prints) and walk with the joystick. Tell me whether the camera angle and the movement feel right.
   Commit: `Walk a bean around the 3D school`
 
-- [ ] **2. Friends can join your lobby and walk together**
+- [x] **2. Friends can join your lobby and walk together**
   Becomes usable: Main Menu → Create Lobby shows a 4-letter code and a copyable share link. Other windows join by typing the code or opening the link. Everyone sees the player list. The host's Start unlocks at 4 players. After Start, everyone appears in the classroom and sees each other walking live.
   Why now: Multiplayer underpins every later behavior, including the kernel. Wiring it right after the 3D test proves the riskiest connection while the game is still small.
   PRD ref: `prd.md > Main Menu and Lobby`, `prd.md > Moving Around the School`, `prd.md > States and Boundaries`
@@ -104,3 +104,6 @@ Activity mode: [not started]
 
 - Added `shared/src/collision.ts` (+ test), which wasn't in `spec.md > File Structure` — the server will need the same obstacle data for proximity checks, so wall collision lives beside `map.ts` instead of inside `client/game/useMovement.ts`.
 - Pinned TypeScript 7.0.2 and package versions published at least two weeks before the build — `npm view` showed newer releases from the last few days, which are skipped for supply-chain safety.
+- Server runs TypeScript directly with `tsx` in production too (`npm start` → `tsx src/index.ts`) instead of compiling to JS — the shared package exports `.ts` source, so a compile step would need a second build of `shared/`; `npm run build` still type-checks the server with `tsc`.
+- Added `server/src/app.ts` (not in `spec.md > File Structure`) so the simulation script can start a real server on a random port; `index.ts` only listens.
+- Spawn seats follow join order on both sides (server seats player *i* at `SPAWN_SEATS[i]`; the client finds its own index), so no extra spawn event was needed.

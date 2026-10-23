@@ -21,3 +21,9 @@ export const PLAYER_RADIUS = 0.45;
 export const INTERACT_RADIUS = 1.6;
 /** Position updates sent per second. */
 export const MOVE_SEND_RATE = 12;
+/** Position broadcasts per second from the server. */
+export const POSITION_BROADCAST_RATE = 12;
+
+export const NAME_MAX_LENGTH = 12;
+/** Player colors in join order (until avatar setup in slice 5). */
+export const PLAYER_COLORS = ["#f2c14e", "#5b8def", "#e5566b", "#4cbf87", "#b07cf0"];
