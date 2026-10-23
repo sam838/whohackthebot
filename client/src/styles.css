@@ -839,6 +839,70 @@ body {
   font-weight: 700;
 }
 
+/* Avatar setup */
+.avatar-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.avatar-stage {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 4px;
+}
+
+.avatar-preview {
+  height: 170px;
+  min-width: 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 70%, #fff3c4 0%, #f3dfa2 70%);
+  border: 3px solid var(--ink);
+  overflow: hidden;
+}
+
+.arrow {
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.avatar-label {
+  margin: -4px 0 0;
+  text-align: center;
+  font: 800 16px var(--display);
+}
+
+.swatches {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  cursor: pointer;
+}
+
+.swatch.on {
+  outline: 4px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.swatch:focus-visible,
+.arrow:focus-visible {
+  outline: 3px solid var(--studybot);
+  outline-offset: 2px;
+}
+
 /* Meetings, vote result, game over */
 .action.meeting {
   background: var(--strike);

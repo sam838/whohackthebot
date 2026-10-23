@@ -1,6 +1,7 @@
 // Lobbies: codes, joining, leaving, host handoff, starting.
 // Pure logic with no sockets, so it can be unit-tested.
 
+import { DEFAULT_CHARACTER, isCharacter, isPlayerColor } from "@whtb/shared/avatars";
 import { MAX_PLAYERS, MIN_PLAYERS, NAME_MAX_LENGTH, PLAYER_COLORS } from "@whtb/shared/constants";
 import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { GameError, GameStatePublic, LobbyState, Phase, PlayerPosition, PublicPlayer } from "@whtb/shared/types";
@@ -14,7 +15,15 @@ export interface ServerPlayer {
   id: string;
   name: string;
   color: string;
+  character: string;
   position: PlayerPosition;
+}
+
+/** What a player chose in Avatar Setup. Bad values fall back to defaults. */
+export interface AvatarChoice {
+  name: unknown;
+  character?: unknown;
+  color?: unknown;
 }
 
 export interface Room {
@@ -53,28 +62,36 @@ export class RoomManager {
     }
   }
 
-  private nextColor(room: Room): string {
+  /** Your chosen color if nobody in the room has it yet, otherwise the next free one. */
+  private colorFor(room: Room, wanted: unknown): string {
     const used = new Set([...room.players.values()].map((p) => p.color));
+    if (isPlayerColor(wanted) && !used.has(wanted)) return wanted;
     return PLAYER_COLORS.find((c) => !used.has(c)) ?? PLAYER_COLORS[0];
   }
 
-  private addPlayer(room: Room, id: string, name: string): void {
-    room.players.set(id, { id, name, color: this.nextColor(room), position: { x: 0, z: 0, heading: Math.PI } });
+  private addPlayer(room: Room, id: string, name: string, avatar: AvatarChoice): void {
+    room.players.set(id, {
+      id,
+      name,
+      color: this.colorFor(room, avatar.color),
+      character: isCharacter(avatar.character) ? avatar.character : DEFAULT_CHARACTER,
+      position: { x: 0, z: 0, heading: Math.PI },
+    });
     this.roomOfPlayer.set(id, room.code);
   }
 
-  create(playerId: string, rawName: unknown): Result<Room> {
-    const name = cleanName(rawName);
+  create(playerId: string, avatar: AvatarChoice): Result<Room> {
+    const name = cleanName(avatar.name);
     if (!name) return fail("NAME_REQUIRED", "Type a name first.");
     this.leave(playerId);
     const room: Room = { code: this.newCode(), hostId: playerId, phase: "lobby", players: new Map(), positionsDirty: false };
     this.rooms.set(room.code, room);
-    this.addPlayer(room, playerId, name);
+    this.addPlayer(room, playerId, name, avatar);
     return { ok: true, value: room };
   }
 
-  join(playerId: string, rawCode: unknown, rawName: unknown): Result<Room> {
-    const name = cleanName(rawName);
+  join(playerId: string, rawCode: unknown, avatar: AvatarChoice): Result<Room> {
+    const name = cleanName(avatar.name);
     if (!name) return fail("NAME_REQUIRED", "Type a name first.");
     const code = typeof rawCode === "string" ? rawCode.trim().toUpperCase() : "";
     const room = this.rooms.get(code);
@@ -83,7 +100,7 @@ export class RoomManager {
     if (room.phase !== "lobby") return fail("ALREADY_STARTED", "That game has already started.");
     if (room.players.size >= MAX_PLAYERS) return fail("ROOM_FULL", `That room is full (${MAX_PLAYERS} players).`);
     this.leave(playerId);
-    this.addPlayer(room, playerId, name);
+    this.addPlayer(room, playerId, name, avatar);
     return { ok: true, value: room };
   }
 
@@ -143,10 +160,11 @@ export class RoomManager {
 }
 
 export function publicPlayers(room: Room): PublicPlayer[] {
-  return [...room.players.values()].map(({ id, name, color }) => ({
+  return [...room.players.values()].map(({ id, name, color, character }) => ({
     id,
     name,
     color,
+    character,
     alive: room.game ? room.game.isAlive(id) : true,
   }));
 }

@@ -92,14 +92,14 @@ export function createApp() {
 
     socket.on("lobby:create", (p) => {
       leaveCurrent();
-      const r = rooms.create(socket.id, p?.name);
+      const r = rooms.create(socket.id, { name: p?.name, character: p?.character, color: p?.color });
       if (!r.ok) return void socket.emit("error", r.error);
       enter(r.value);
     });
 
     socket.on("lobby:join", (p) => {
       if (rooms.roomOf(socket.id)?.code !== p?.code?.toUpperCase?.()) leaveCurrent();
-      const r = rooms.join(socket.id, p?.code, p?.name);
+      const r = rooms.join(socket.id, p?.code, { name: p?.name, character: p?.character, color: p?.color });
       if (!r.ok) return void socket.emit("error", r.error);
       enter(r.value);
     });

@@ -1,4 +1,6 @@
+import type { Avatar } from "@whtb/shared/avatars";
 import { useEffect, useState } from "react";
+import { loadAvatar, saveAvatar } from "./avatar/avatarStorage";
 import { GameView } from "./game/GameView";
 import { attachKeyboard } from "./game/input";
 import { ActionButton } from "./hud/ActionButton";
@@ -59,15 +61,19 @@ export function App() {
   const lobby = useGame((s) => s.lobby);
   const game = useGame((s) => s.game);
   const myId = useGame((s) => s.myId);
-  const [name, setName] = useState("");
+  const [avatar, setAvatarState] = useState<Avatar>(loadAvatar);
+  const setAvatar = (a: Avatar) => {
+    setAvatarState(a);
+    saveAvatar(a);
+  };
 
   useEffect(() => attachKeyboard(), []);
   useUseKey();
 
   return (
     <>
-      {screen === "menu" && <MainMenu name={name} setName={setName} />}
-      {screen === "join" && <Join name={name} />}
+      {screen === "menu" && <MainMenu avatar={avatar} setAvatar={setAvatar} />}
+      {screen === "join" && <Join avatar={avatar} />}
       {screen === "lobby" && lobby && <Lobby lobby={lobby} />}
       {screen === "playing" && game && myId && (
         <>

@@ -69,7 +69,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: In 4 windows, call a meeting, chat from two windows, vote out the Bluffer, and see "Kicked out of school!" and every role revealed. Play again and vote out an innocent to see the game continue.
   Commit: `Add meetings, voting, and game over`
 
-- [ ] **5. Set up your avatar on the home screen**
+- [x] **5. Set up your avatar on the home screen**
   Becomes usable: The Main Menu shows your avatar slowly rotating in 3D. You can choose one of 4–6 characters, 5 colors, and a name. It's remembered on this device and appears in the lobby, the school, and the meeting list. CC0 character and furniture models replace the placeholder boxes where they load, with the bean as a fallback.
   Why now: The core game is complete and testable with beans, so the art risk can't block it. Avatars also make players recognizable before the role book is built.
   PRD ref: `prd.md > Avatar Setup`, `prd.md > Look and Feel`
@@ -137,3 +137,5 @@ Activity mode: [not started]
 - Added a Leave button (and Esc) to the terminal panel, with a `terminal:close` event — the learner found there was no way to back out of a terminal. Leaving costs nothing (no strike, no progress, pieces kept); a hack that was already used up by opening stays used.
 - The Bluffer now handles pieces exactly like everyone (pick up max 2, pooled, can arrange and answer; no strikes from their own answers; no fake questions) — the learner found that a Bluffer whose pieces never pool, or who can't pick up, is always exposed by a 1-on-1 terminal test. Replaces the earlier fake-question and hoard-only behavior.
 - Replaced the temporary `hud/GameOverNotice.tsx` with `screens/GameOver.tsx`; added a `room:leave` event (Back to menu) and `game:respawn` (seats after a meeting) not listed in the spec event table. Meeting/vote-result are sub-phases of a playing game (`GamePhase`), and the vote result stays on screen 6 seconds before a game-over check so the "kicked out" moment is seen.
+- Avatar Setup offers all 12 Kenney Mini Characters (the plan said 4–6) since the pack has 12 at no extra cost. Characters keep their own textures; the player's color shows as a disc under their feet instead of tinting the model (tinting a textured model muddies it). If two players pick the same color, the later one gets the next free color.
+- Added decorative CC0 furniture (plants, fridge, trash can, books) as solid map entries so collisions and piece spots stay consistent; every model falls back to its old box if it fails to load. Added `client/src/game/Character.tsx`, `FittedModel.tsx`, and `ModelBoundary.tsx` (not named in the spec).

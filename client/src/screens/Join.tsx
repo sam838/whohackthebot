@@ -1,8 +1,9 @@
+import type { Avatar } from "@whtb/shared/avatars";
 import { useState } from "react";
 import { socket } from "../net/socket";
 import { useGame } from "../net/store";
 
-export function Join({ name }: { name: string }) {
+export function Join({ avatar }: { avatar: Avatar }) {
   const [code, setCode] = useState("");
   const error = useGame((s) => s.error);
   const connected = useGame((s) => s.connected);
@@ -14,7 +15,7 @@ export function Join({ name }: { name: string }) {
         className="card"
         onSubmit={(e) => {
           e.preventDefault();
-          socket.emit("lobby:join", { code, name });
+          socket.emit("lobby:join", { code, ...avatar });
         }}
       >
         <h2 className="heading">Join a friend</h2>

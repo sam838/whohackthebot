@@ -1,8 +1,11 @@
 import { Text } from "@react-three/drei";
 import { Suspense } from "react";
+import { FittedModel } from "./FittedModel";
+import { ModelBoundary } from "./ModelBoundary";
 import { Terminal3D } from "./Terminal3D";
 import {
   FURNITURE,
+  type Furniture,
   MEETING_BUTTON,
   ROOMS,
   TERMINALS,
@@ -71,15 +74,44 @@ function Walls() {
   );
 }
 
-function Furniture() {
+/** Kenney Furniture Kit models (CC0) for each kind; the board stays a simple box. */
+const MODEL_FOR: Partial<Record<Furniture["kind"], string>> = {
+  desk: "/models/furniture/desk.glb",
+  shelf: "/models/furniture/bookcaseClosedWide.glb",
+  table: "/models/furniture/table.glb",
+  labTable: "/models/furniture/table.glb",
+  canteenTable: "/models/furniture/table.glb",
+  books: "/models/furniture/books.glb",
+  plant: "/models/furniture/pottedPlant.glb",
+  fridge: "/models/furniture/kitchenFridge.glb",
+  trashcan: "/models/furniture/trashcan.glb",
+};
+
+function BoxPiece({ f }: { f: Furniture }) {
+  return (
+    <mesh position={[f.x, (f.y ?? 0) + f.h / 2, f.z]}>
+      <boxGeometry args={[f.w, f.h, f.d]} />
+      <meshToonMaterial color={f.color} />
+    </mesh>
+  );
+}
+
+function FurnitureSet() {
   return (
     <>
-      {FURNITURE.map((f, i) => (
-        <mesh key={i} position={[f.x, (f.y ?? 0) + f.h / 2, f.z]}>
-          <boxGeometry args={[f.w, f.h, f.d]} />
-          <meshToonMaterial color={f.color} />
-        </mesh>
-      ))}
+      {FURNITURE.map((f, i) => {
+        const file = MODEL_FOR[f.kind];
+        if (!file) return <BoxPiece key={i} f={f} />;
+        // If a model fails to load, the plain box stands in for it.
+        const box = <BoxPiece f={f} />;
+        return (
+          <ModelBoundary key={i} fallback={box}>
+            <Suspense fallback={box}>
+              <FittedModel file={file} box={f} />
+            </Suspense>
+          </ModelBoundary>
+        );
+      })}
     </>
   );
 }
@@ -114,7 +146,7 @@ export function SchoolMap() {
     <>
       <Floors />
       <Walls />
-      <Furniture />
+      <FurnitureSet />
       <Terminals />
       <MeetingButton />
     </>

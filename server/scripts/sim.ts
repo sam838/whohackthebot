@@ -41,21 +41,23 @@ async function main() {
   try {
     console.log("lobby");
     const [host, a, b, c] = await Promise.all([open(), open(), open(), open()]);
-    host.emit("lobby:create", { name: "Host" });
+    host.emit("lobby:create", { name: "Host", character: "male-c", color: "#5b8def" });
     const created = await once<{ code: string }>(host, "lobby:state");
     check(/^[A-HJ-NP-Z]{4}$/.test(created.code), `room code ${created.code}`);
 
     const wrong = once<{ code: string }>(a, "error");
-    a.emit("lobby:join", { code: "ZZZZ", name: "A" });
+    a.emit("lobby:join", { code: "ZZZZ", name: "A", character: "female-a", color: "#f2c14e" });
     check((await wrong).code === "ROOM_NOT_FOUND", "wrong code is rejected");
 
     const tooEarly = once<{ code: string }>(host, "error");
     host.emit("lobby:start");
     check((await tooEarly).code === "NOT_ENOUGH_PLAYERS", "start blocked with 1 player");
 
-    for (const [s, n] of [[a, "A"], [b, "B"], [c, "C"]] as const) s.emit("lobby:join", { code: created.code, name: n });
-    const full = await once<{ players: unknown[] }>(host, "lobby:state", (s) => s.players.length === 4);
+    for (const [s, n] of [[a, "A"], [b, "B"], [c, "C"]] as const) s.emit("lobby:join", { code: created.code, name: n, character: "female-b", color: "#f2c14e" });
+    const full = await once<{ players: { character: string; color: string }[] }>(host, "lobby:state", (s) => s.players.length === 4);
     check(full.players.length === 4, "all 4 players in the lobby");
+    check(full.players[0].character === "male-c" && full.players[1].character === "female-b", "chosen characters reach everyone");
+    check(new Set(full.players.map((p) => p.color)).size === 4, "everyone has a different color even when they asked for the same one");
 
     console.log("start");
     const players = [host, a, b, c];
@@ -128,7 +130,7 @@ async function main() {
 
     const late = await open();
     const lateErr = once<{ code: string }>(late, "error");
-    late.emit("lobby:join", { code: created.code, name: "Late" });
+    late.emit("lobby:join", { code: created.code, name: "Late", character: "male-a", color: "#f2c14e" });
     check((await lateErr).code === "ALREADY_STARTED", "5th player can't join a started game");
 
     console.log("movement");
@@ -151,9 +153,9 @@ async function main() {
       const ps = await Promise.all([open(), open(), open(), open()]);
       const roleOfP = new Map<Client, string>();
       ps.forEach((s) => s.on("game:role", ({ role }) => roleOfP.set(s, role)));
-      ps[0].emit("lobby:create", { name: "H" });
+      ps[0].emit("lobby:create", { name: "H", character: "male-a", color: "#f2c14e" });
       const { code } = await once<{ code: string }>(ps[0], "lobby:state");
-      ps.slice(1).forEach((s, i) => s.emit("lobby:join", { code, name: `P${i}` }));
+      ps.slice(1).forEach((s, i) => s.emit("lobby:join", { code, name: `P${i}`, character: "female-c", color: "#f2c14e" }));
       await once(ps[0], "lobby:state", (st: { players: unknown[] }) => st.players.length === 4);
       const go = Promise.all(ps.map((s) => once(s, "game:state")));
       ps[0].emit("lobby:start");

@@ -10,6 +10,8 @@ export interface PublicPlayer {
   id: string;
   name: string;
   color: string;
+  /** Avatar character id (shared/avatars.ts). */
+  character: string;
   alive: boolean;
 }
 

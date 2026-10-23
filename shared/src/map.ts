@@ -18,7 +18,7 @@ export interface Room {
 export type WallSegment = [x1: number, z1: number, x2: number, z2: number];
 
 export interface Furniture {
-  kind: "desk" | "board" | "shelf" | "table" | "labTable" | "canteenTable";
+  kind: "desk" | "board" | "shelf" | "table" | "labTable" | "canteenTable" | "plant" | "fridge" | "trashcan" | "books";
   x: number;
   z: number;
   w: number;
@@ -90,6 +90,13 @@ export const FURNITURE: Furniture[] = [
   { kind: "labTable", x: 7.5, z: 15.6, w: 3.5, d: 1.2, h: 0.9, color: "#f4f4f4", solid: true },
   { kind: "canteenTable", x: 16.5, z: 13, w: 4, d: 1.2, h: 0.75, color: "#e07a5f", solid: true },
   { kind: "canteenTable", x: 16.5, z: 15.8, w: 4, d: 1.2, h: 0.75, color: "#e07a5f", solid: true },
+  // Decoration (CC0 models in slice 5), placed against walls out of the way.
+  { kind: "books", x: 17.2, z: 4.6, w: 0.6, d: 0.35, h: 0.3, y: 0.75, color: "#c0392b", solid: false },
+  { kind: "plant", x: 11.3, z: 0.8, w: 0.7, d: 0.7, h: 1.4, color: "#4cbf87", solid: true },
+  { kind: "plant", x: 23.3, z: 7.3, w: 0.7, d: 0.7, h: 1.4, color: "#4cbf87", solid: true },
+  { kind: "plant", x: 11.3, z: 17.3, w: 0.7, d: 0.7, h: 1.4, color: "#4cbf87", solid: true },
+  { kind: "fridge", x: 12.7, z: 10.8, w: 0.9, d: 0.8, h: 1.9, color: "#e8e8e8", solid: true },
+  { kind: "trashcan", x: 23.4, z: 14, w: 0.6, d: 0.6, h: 0.9, color: "#7a7f87", solid: true },
 ];
 
 export const TERMINAL_SIZE = { w: 0.9, d: 0.6 };

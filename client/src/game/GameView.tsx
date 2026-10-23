@@ -19,6 +19,7 @@ function Scene({ players, myId }: SceneProps) {
   const myIndex = Math.max(0, players.findIndex((p) => p.id === myId));
   const me = useMovement(SPAWN_SEATS[myIndex % SPAWN_SEATS.length]);
   const myColor = players[myIndex]?.color ?? "#f2c14e";
+  const myCharacter = players[myIndex]?.character;
 
   return (
     <>
@@ -26,11 +27,11 @@ function Scene({ players, myId }: SceneProps) {
       <hemisphereLight args={["#ffffff", "#b9a7c9", 1.6]} />
       <directionalLight position={[8, 20, 12]} intensity={1.4} />
       <SchoolMap />
-      <Player color={myColor} body={me} isYou ghost={!players[myIndex]?.alive} />
+      <Player color={myColor} character={myCharacter} body={me} isYou ghost={!players[myIndex]?.alive} />
       {players
         .filter((p) => p.id !== myId && p.alive)
         .map((p) => (
-          <RemotePlayer key={p.id} id={p.id} color={p.color} />
+          <RemotePlayer key={p.id} id={p.id} color={p.color} character={p.character} />
         ))}
       <FollowCamera target={me} />
       <NearbyWatcher me={me} />

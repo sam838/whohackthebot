@@ -8,7 +8,7 @@ import type { Body } from "./useMovement";
  * Another player's character. Each frame it glides toward the latest position
  * the server sent, so 12 updates a second still look smooth at 60 frames.
  */
-export function RemotePlayer({ id, color }: { id: string; color: string }) {
+export function RemotePlayer({ id, color, character }: { id: string; color: string; character: string }) {
   const body = useRef<Body | null>(null);
 
   useFrame((_, delta) => {
@@ -31,5 +31,5 @@ export function RemotePlayer({ id, color }: { id: string; color: string }) {
   const spawn = remotePositions.get(id);
   if (!body.current && spawn) body.current = { ...spawn, moving: false };
 
-  return <Player color={color} body={body as React.RefObject<Body>} />;
+  return <Player color={color} character={character} body={body} />;
 }

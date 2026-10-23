@@ -16,8 +16,8 @@ import type {
 } from "./types";
 
 export interface ClientToServerEvents {
-  "lobby:create": (p: { name: string }) => void;
-  "lobby:join": (p: { code: string; name: string }) => void;
+  "lobby:create": (p: { name: string; character: string; color: string }) => void;
+  "lobby:join": (p: { code: string; name: string; character: string; color: string }) => void;
   "lobby:start": () => void;
   move: (p: PlayerPosition) => void;
   "piece:pickup": (p: { pieceId: string }) => void;
