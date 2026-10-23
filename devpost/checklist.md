@@ -39,6 +39,16 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: In 4 windows, start a game and note each window's role. As the Bluffer, hack a terminal. As a Student, use that terminal, trust Study-Bot, and watch the strike appear in all windows. Try Double-check and the Fact-Checker's Verify.
   Commit: `Add secret roles and lying Study-Bot terminals`
 
+- [x] **3b. Hunt the question pieces, then arrange them (or let Study-Bot)**
+  Becomes usable: Each task's question is split into 3 pieces lying in different rooms. Everyone except the Bluffer sees all pieces in their owner's color, and walking over your own picks it up. The task list shows `pieces 1/3`. With all 3, the terminal opens an arrange step: tap the pieces into order, or let Study-Bot arrange it. A hacked Study-Bot builds a believable wrong question that its lie answers. Then the answer step works as before.
+  Why now: The first hands-on checkpoint showed a fast class wins before the Bluffer matters. The learner chose an escape-room hunt that slows the rush and gives the Bluffer a Werewolf-style weakness (they can't see pieces). It reshapes the kernel moment, so it comes before meetings.
+  PRD ref: `prd.md > Question Pieces`, `prd.md > Study-Bot Terminals (the kernel)`
+  Spec ref: `spec.md > Question Pieces (server + client)`, `spec.md > Socket Events`, `spec.md > Study-Bot Terminal Panel (client) — the kernel`
+  Build: Add `pieces` and `twistedPrompt` to the 6 starter questions, `PIECE_SPOTS` in `map.ts`, piece placement/pickup/arrange/botArrange in `GameRoom`, the new private events, `Pieces3D`, piece counts in `TaskList`, the arrange step in `TerminalPanel`, and a "you can't see pieces" note for the Bluffer.
+  Verify (mechanical): Vitest tests pass: pieces land in 3 different rooms on free floor; only the owner can pick up, and only within reach; a terminal refuses with fewer than 3 pieces; a correct arrangement reveals the choices and a wrong one says try again; hacked botArrange gives `twistedPrompt` with the lie as Study-Bot's pick; question data is consistent (pieces join into the prompt). Simulation: the Bluffer never receives `pieces:state`, and piece positions never include text. `npm run build` passes.
+  Learner check: In 4 windows, start a game. In a Student window, follow your yellow pieces, collect 3, and open the terminal. Arrange it yourself once, then on another task let Study-Bot arrange it after the Bluffer hacked it, and compare the question you get. Check that the Bluffer's window shows no pieces.
+  Commit: `Add question pieces to hunt and arrange`
+
 - [ ] **4. Call a meeting and kick the Bluffer out of school**
   Becomes usable: Near the classroom button, any living player can call a meeting (once each). Everyone switches to the Meeting screen with text chat and voting (vote or skip, 90s). The result says who was kicked out and whether they were the Bluffer. Ejected or disconnected players become spectators. All four win conditions work. The Game Over screen reveals every role and returns to the menu.
   Why now: Completes the core loop and the demo moment ("The bluffer get caught then kicked out from school") right after the kernel.
@@ -86,6 +96,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
 
 ## Final Review
 
+- [ ] Hide pieces inside objects you examine (paintings, shelves, desks): an Examine action finds a piece or says "Nothing here", not only pieces lying on the floor — learner request after slice 3b
 - [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
@@ -111,3 +122,4 @@ Activity mode: [not started]
 - Added a private `terminal:hackUsed` event so the Bluffer's red "hacked" screen clears when a classmate takes the bait, and an `AnswerOutcome` of `faked` for the Bluffer's pretend answers — the spec didn't say what the Bluffer sees after faking a task.
 - Students and the Fact-Checker can only open terminals on their task list ("No task for you at this terminal"); the Bluffer can open any terminal to look busy. Answer options are shuffled per question so the right answer isn't always in the same spot.
 - Desktop players can press E to use a terminal (in addition to the Use button), and task terminals show a bobbing yellow marker — both make the 4-window demo easier to follow.
+- Added slice 3b (question pieces, arranging, Study-Bot arranging, Bluffer can't see pieces) — the first hands-on checkpoint found a fast class finishes every task before the Bluffer matters; the learner chose an escape-room hunt over tuning numbers. PRD (`Question Pieces`) and spec (`Question Pieces (server + client)`, events) updated to match.

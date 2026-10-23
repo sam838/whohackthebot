@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { socket } from "../net/socket";
-import { useGame } from "../net/store";
+import { panelOpen, useGame } from "../net/store";
 
 /** Context buttons: Use (at a terminal) and, for the Bluffer, Hack with its cooldown. */
 export function ActionButton() {
   const near = useGame((s) => s.nearTerminal);
   const role = useGame((s) => s.role);
   const hackReadyAt = useGame((s) => s.hackReadyAt);
-  const panelOpen = useGame((s) => Boolean(s.question));
+  const busy = useGame(panelOpen);
   const [now, setNow] = useState(() => performance.now());
 
   // Re-render once a second only while the hack is cooling down.
@@ -17,7 +17,7 @@ export function ActionButton() {
     return () => clearTimeout(t);
   }, [hackReadyAt, now]);
 
-  if (!near || panelOpen) return null;
+  if (!near || busy) return null;
   const cooldown = Math.ceil((hackReadyAt - performance.now()) / 1000);
 
   return (

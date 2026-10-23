@@ -155,6 +155,14 @@ PRD ref: `prd.md > Study-Bot Terminals (the kernel)`, `prd.md > Bluffer: Hacking
   - **Hack** (Bluffer only, when cooldown is ready): "Hack this terminal" → confirmation "Next answer here will lie."
   - The result flash: "Correct!", "Study-Bot lied: strike!", or "Wrong. Try this task again later."
 
+### Question Pieces (server + client)
+PRD ref: `prd.md > Question Pieces`. Added during `5-build` (slice 3b).
+- `shared/questions.ts`: each question gains `pieces` (3 ordered fragments that join into `prompt`) and `twistedPrompt` (a believable wrong question whose correct answer is the lie option).
+- `shared/map.ts`: `PIECE_SPOTS`, free floor points generated on a grid inside each room, minus anything that collides with furniture.
+- `GameRoom`: at start, each non-Bluffer task gets its own question, and its 3 pieces go to random spots in three different rooms. Pickup is checked by distance and owner. A terminal opens to an **arrange** step only when all 3 pieces are held. Arranging correctly, or asking Study-Bot, reveals the choices. A hacked Study-Bot arranges `twistedPrompt`.
+- Private messages: non-Bluffers get `pieces:state` (uncollected pieces with owner and position, **no text**). The owner gets the piece text on pickup. The Bluffer gets nothing.
+- Client: `game/Pieces3D.tsx` (paper scraps in the owner's color, yours glowing, auto-pickup when you walk over yours), task list shows `pieces 1/3`, and `TerminalPanel` gets an arrange step (tap cards in order, or "Let Study-Bot arrange it").
+
 ### Meeting, Chat & Vote (client)
 PRD ref: `prd.md > Meetings and Voting`.
 - `screens/Meeting.tsx`: who called it, the chat log and input (max 140 characters per message), a player list with vote buttons and a Skip button, a 90-second countdown, and who has voted (not *for whom*).
@@ -178,7 +186,10 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | C→S | `lobby:join` | `{code, name, character, color}` | |
 | C→S | `lobby:start` | — | Host only, 4–5 players |
 | C→S | `move` | `{x, z, heading}` | ~12/s, ignored unless `playing` |
-| C→S | `terminal:open` | `{terminalId}` | Must be within radius |
+| C→S | `piece:pickup` | `{pieceId}` | Owner only, within reach |
+| C→S | `terminal:open` | `{terminalId}` | Must be within radius and hold all 3 pieces |
+| C→S | `terminal:arrange` | `{order: pieceIds[]}` | Player's own arrangement |
+| C→S | `terminal:botArrange` | — | Ask Study-Bot to arrange |
 | C→S | `terminal:answer` | `{choiceIndex}` | |
 | C→S | `terminal:doubleCheck` | — | |
 | C→S | `terminal:verify` | — | Fact-Checker, once |
@@ -192,6 +203,10 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | S→C | `game:tasks` | `{terminalIds[]}` | **Private** |
 | S→C | `game:state` | `{phase, players[] (id, name, character, color, alive), strikes, progress, goal, meetingCaller?, phaseEndsAt?}` | Room. Never includes roles |
 | S→C | `positions` | `{[id]: {x, z, heading}}` | Room, ~12/s |
+| S→C | `pieces:state` | `{pieces: {id, ownerId, x, z}[]}` | **Non-Bluffers only**, no text |
+| S→C | `piece:collected` | `{pieceId, terminalId, text}` | **Private** to the owner |
+| S→C | `terminal:arrange` | `{terminalId, cards: {id, text}[], msLeft}` | **Private**: shuffled pieces to order |
+| S→C | `terminal:arrangeWrong` | — | Private: try again |
 | S→C | `terminal:question` | `{prompt, choices[4], botPick, deadline}` | **Private**. No correct answer included |
 | S→C | `terminal:hint` | `{hint, deadline}` | Private |
 | S→C | `terminal:verifyResult` | `{botIsRight: boolean}` | Private |

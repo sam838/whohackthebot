@@ -14,7 +14,9 @@ const SCREEN_NEAR = "#fff3b0";
  */
 export function Terminal3D({ spot }: { spot: TerminalSpot }) {
   const near = useGame((s) => s.nearTerminal === spot.id);
-  const isTask = useGame((s) => s.tasks.includes(spot.id));
+  const task = useGame((s) => s.tasks.find((t) => t.terminalId === spot.id));
+  // Marker shows once you hold all the pieces (the Bluffer's fake tasks are always "ready").
+  const isTask = Boolean(task && task.found === task.total);
   const hackedByMe = useGame((s) => s.myHacks.includes(spot.id));
   const marker = useRef<Mesh>(null);
 

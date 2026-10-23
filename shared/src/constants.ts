@@ -6,7 +6,8 @@ export const MAX_PLAYERS = 5;
 export const TASKS_PER_PLAYER = 3;
 export const STRIKES_TO_LOSE = 3;
 
-export const QUESTION_SECONDS = 20;
+/** Time to arrange and answer once a terminal is open. */
+export const QUESTION_SECONDS = 30;
 export const DOUBLE_CHECK_COST_SECONDS = 8;
 export const HACK_COOLDOWN_SECONDS = 30;
 export const MEETING_SECONDS = 90;

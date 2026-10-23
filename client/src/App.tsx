@@ -7,7 +7,7 @@ import { Joystick } from "./hud/Joystick";
 import { StrikeBar } from "./hud/StrikeBar";
 import { TaskList } from "./hud/TaskList";
 import { socket } from "./net/socket";
-import { currentScreen, useGame } from "./net/store";
+import { currentScreen, panelOpen, useGame } from "./net/store";
 import { Join } from "./screens/Join";
 import { Lobby } from "./screens/Lobby";
 import { MainMenu } from "./screens/MainMenu";
@@ -23,9 +23,11 @@ function ConnectionBanner() {
 
 function Toast() {
   const error = useGame((s) => s.error);
+  const notice = useGame((s) => s.notice);
   const inGame = useGame((s) => Boolean(s.game));
-  if (!error || !inGame) return null;
-  return <div className="toast">{error.message}</div>;
+  const text = error?.message ?? notice;
+  if (!text || !inGame) return null;
+  return <div className="toast">{text}</div>;
 }
 
 /** Desktop shortcut: E uses the terminal you are standing at (handy for the 4-window demo). */
@@ -33,8 +35,9 @@ function useUseKey() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "KeyE" || e.repeat) return;
-      const { nearTerminal, question, gameOver } = useGame.getState();
-      if (nearTerminal && !question && !gameOver) socket.emit("terminal:open", { terminalId: nearTerminal });
+      const s = useGame.getState();
+      const { nearTerminal, gameOver } = s;
+      if (nearTerminal && !panelOpen(s) && !gameOver) socket.emit("terminal:open", { terminalId: nearTerminal });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

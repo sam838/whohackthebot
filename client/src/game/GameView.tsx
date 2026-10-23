@@ -3,6 +3,7 @@ import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { PublicPlayer } from "@whtb/shared/types";
 import { FollowCamera } from "./FollowCamera";
 import { NearbyWatcher } from "./NearbyWatcher";
+import { Pieces3D } from "./Pieces3D";
 import { Player } from "./Player";
 import { RemotePlayer } from "./RemotePlayer";
 import { SchoolMap } from "./SchoolMap";
@@ -33,6 +34,7 @@ function Scene({ players, myId }: SceneProps) {
         ))}
       <FollowCamera target={me} />
       <NearbyWatcher me={me} />
+      <Pieces3D me={me} />
     </>
   );
 }

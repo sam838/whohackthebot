@@ -34,11 +34,34 @@ export interface PlayerPosition {
   heading: number;
 }
 
+/** One of your tasks: a terminal, and how many of its question pieces you hold. */
+export interface TaskInfo {
+  terminalId: string;
+  found: number;
+  /** 0 for the Bluffer's fake tasks. */
+  total: number;
+}
+
+/** A question piece lying in the school. Its text is only revealed to its owner on pickup. */
+export interface PieceInfo {
+  id: string;
+  ownerId: string;
+  x: number;
+  z: number;
+}
+
+export interface ArrangeCard {
+  id: string;
+  text: string;
+}
+
 /** A question as one player sees it. The correct answer stays on the server. */
 export interface TerminalQuestion {
   terminalId: string;
   subject: string;
+  /** The real question, or a twisted one if a hacked Study-Bot arranged it. */
   prompt: string;
+  arrangedBy: "you" | "studybot" | "none";
   choices: string[];
   /** The option Study-Bot recommends: correct, or the lie if the terminal was hacked. */
   botPick: number;

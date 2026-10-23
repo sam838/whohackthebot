@@ -3,12 +3,15 @@
 
 import type {
   AnswerOutcome,
+  ArrangeCard,
   GameError,
   GameOver,
   GameStatePublic,
   LobbyState,
+  PieceInfo,
   PlayerPosition,
   Role,
+  TaskInfo,
   TerminalQuestion,
 } from "./types";
 
@@ -17,7 +20,10 @@ export interface ClientToServerEvents {
   "lobby:join": (p: { code: string; name: string }) => void;
   "lobby:start": () => void;
   move: (p: PlayerPosition) => void;
+  "piece:pickup": (p: { pieceId: string }) => void;
   "terminal:open": (p: { terminalId: string }) => void;
+  "terminal:arrange": (p: { order: string[] }) => void;
+  "terminal:botArrange": () => void;
   "terminal:answer": (p: { choiceIndex: number }) => void;
   "terminal:doubleCheck": () => void;
   "terminal:verify": () => void;
@@ -31,7 +37,12 @@ export interface ServerToClientEvents {
   error: (e: GameError) => void;
   // Private: sent only to the player concerned.
   "game:role": (p: { role: Role }) => void;
-  "game:tasks": (p: { terminalIds: string[] }) => void;
+  "game:tasks": (p: { tasks: TaskInfo[] }) => void;
+  /** Non-Bluffers only: uncollected pieces, without their text. */
+  "pieces:state": (p: { pieces: PieceInfo[] }) => void;
+  "piece:collected": (p: { pieceId: string; terminalId: string; text: string }) => void;
+  "terminal:arrange": (p: { terminalId: string; cards: ArrangeCard[]; msLeft: number }) => void;
+  "terminal:arrangeWrong": () => void;
   "terminal:question": (q: TerminalQuestion) => void;
   "terminal:hint": (p: { hint: string; msLeft: number }) => void;
   "terminal:verifyResult": (p: { botIsRight: boolean }) => void;

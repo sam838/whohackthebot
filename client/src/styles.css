@@ -727,3 +727,98 @@ body {
 .result.meh {
   background: #f1eef6;
 }
+
+/* Question pieces: task list and the arrange step */
+.tasklist-body li.ready {
+  color: var(--accent);
+}
+
+.pieces-count {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.slots {
+  display: grid;
+  gap: 6px;
+}
+
+.slot {
+  min-height: 42px;
+  text-align: left;
+  font: 700 16px var(--body);
+  color: rgba(43, 36, 64, 0.35);
+  background: rgba(43, 36, 64, 0.06);
+  border: 3px dashed rgba(43, 36, 64, 0.3);
+  border-radius: 12px;
+  padding: 6px 10px;
+}
+
+.slot.filled {
+  color: var(--ink);
+  background: #fff;
+  border: 3px solid var(--ink);
+  cursor: pointer;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 10px;
+}
+
+.card-piece {
+  font: 700 15px var(--body);
+  color: var(--ink);
+  background: #fffdf4;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  padding: 6px 10px;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+
+.card-piece:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.arrange-wrong {
+  margin: 0;
+  color: var(--strike);
+  font-weight: 700;
+}
+
+.bot-arrange {
+  justify-self: start;
+  background: var(--studybot);
+}
+
+.arranged-by {
+  margin: 0;
+  justify-self: start;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--studybot);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 8px;
+}
+
+.your-pieces {
+  margin: -4px 0 0;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.chip {
+  background: #fffdf4;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 0 6px;
+  font-weight: 700;
+}
