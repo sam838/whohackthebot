@@ -1,11 +1,11 @@
 import { Text } from "@react-three/drei";
 import { Suspense } from "react";
+import { Terminal3D } from "./Terminal3D";
 import {
   FURNITURE,
   MEETING_BUTTON,
   ROOMS,
   TERMINALS,
-  TERMINAL_SIZE,
   WALLS,
   WALL_HEIGHT,
   WALL_THICKNESS,
@@ -88,16 +88,7 @@ function Terminals() {
   return (
     <>
       {TERMINALS.map((t) => (
-        <group key={t.id} position={[t.x, 0, t.z]}>
-          <mesh position-y={0.55}>
-            <boxGeometry args={[TERMINAL_SIZE.w, 1.1, TERMINAL_SIZE.d]} />
-            <meshToonMaterial color="#3b3550" />
-          </mesh>
-          <mesh position={[0, 1.35, 0.05]} rotation-x={-0.35}>
-            <boxGeometry args={[0.8, 0.55, 0.08]} />
-            <meshBasicMaterial color="#ffd84d" />
-          </mesh>
-        </group>
+        <Terminal3D key={t.id} spot={t} />
       ))}
     </>
   );

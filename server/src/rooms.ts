@@ -4,12 +4,16 @@
 import { MAX_PLAYERS, MIN_PLAYERS, NAME_MAX_LENGTH, PLAYER_COLORS } from "@whtb/shared/constants";
 import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { GameError, GameStatePublic, LobbyState, Phase, PlayerPosition, PublicPlayer } from "@whtb/shared/types";
+import type { GameRoom } from "./game/GameRoom";
 
 // No I or O, so codes can't be confused with 1 or 0.
 const CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 const CODE_LENGTH = 4;
 
-export interface ServerPlayer extends PublicPlayer {
+export interface ServerPlayer {
+  id: string;
+  name: string;
+  color: string;
   position: PlayerPosition;
 }
 
@@ -20,6 +24,8 @@ export interface Room {
   players: Map<string, ServerPlayer>;
   /** Set when a position changed since the last broadcast. */
   positionsDirty: boolean;
+  /** The referee, once the game has started. */
+  game?: GameRoom;
 }
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: GameError };
@@ -137,7 +143,12 @@ export class RoomManager {
 }
 
 export function publicPlayers(room: Room): PublicPlayer[] {
-  return [...room.players.values()].map(({ id, name, color }) => ({ id, name, color }));
+  return [...room.players.values()].map(({ id, name, color }) => ({
+    id,
+    name,
+    color,
+    alive: room.game ? room.game.isAlive(id) : true,
+  }));
 }
 
 export function lobbyState(room: Room): LobbyState {
@@ -145,7 +156,14 @@ export function lobbyState(room: Room): LobbyState {
 }
 
 export function gameState(room: Room): GameStatePublic {
-  return { phase: room.phase, players: publicPlayers(room) };
+  const g = room.game;
+  return {
+    phase: room.phase,
+    players: publicPlayers(room),
+    strikes: g?.strikes ?? 0,
+    progress: g?.progress ?? 0,
+    goal: g?.goal() ?? 0,
+  };
 }
 
 export function positionsOf(room: Room): Record<string, PlayerPosition> {

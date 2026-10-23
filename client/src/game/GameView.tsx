@@ -2,6 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { PublicPlayer } from "@whtb/shared/types";
 import { FollowCamera } from "./FollowCamera";
+import { NearbyWatcher } from "./NearbyWatcher";
 import { Player } from "./Player";
 import { RemotePlayer } from "./RemotePlayer";
 import { SchoolMap } from "./SchoolMap";
@@ -31,6 +32,7 @@ function Scene({ players, myId }: SceneProps) {
           <RemotePlayer key={p.id} id={p.id} color={p.color} />
         ))}
       <FollowCamera target={me} />
+      <NearbyWatcher me={me} />
     </>
   );
 }

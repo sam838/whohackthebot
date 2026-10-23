@@ -29,7 +29,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: Open 4 browser windows. Create a lobby in one, join two by the share link and one by typing the code, check that Start says "Need X more" until the 4th joins, then start. Walk in one window and watch the same character move in the others.
   Commit: `Create, join, and walk together in a lobby`
 
-- [ ] **3. Study-Bot can lie: secret roles, terminals, hacks, strikes**
+- [x] **3. Study-Bot can lie: secret roles, terminals, hacks, strikes**
   Becomes usable: On Start, each player privately learns their role (temporary role banner; the book comes in slice 6) and their task list. Walking to a terminal and tapping Use opens a timed multiple-choice question where Study-Bot confidently recommends one answer. Double-check costs time and shows a hint. The Bluffer can Hack a terminal (30s cooldown) so its next answer lies. The Fact-Checker can Verify once (TRUE/FALSE). Answers move the class progress or add a strike that everyone sees. 3 strikes or all tasks done ends the game with a temporary result line.
   Why now: This is `scope.md > The Unique Kernel`, the reason the game exists. It comes as soon as players can share a world.
   PRD ref: `prd.md > Study-Bot Terminals (the kernel)`, `prd.md > Bluffer: Hacking`, `prd.md > Fact-Checker: Verify`, `prd.md > Role Reveal` (role assignment only), `prd.md > Win and Game Over` (strike and progress wins)
@@ -81,7 +81,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — after slice 3 (the kernel playable in 4 windows), so feedback on Study-Bot, timing, and feel can shape meetings, avatars, and the reveal
+- [x] Early usable behavior explored — after slice 3 (the kernel playable in 4 windows), so feedback on Study-Bot, timing, and feel can shape meetings, avatars, and the reveal. Done: learner played 4 windows, confirmed it works, and found that a fast class wins before the Bluffer matters — leading to slice 3b (question pieces)
 - [ ] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
@@ -107,3 +107,7 @@ Activity mode: [not started]
 - Server runs TypeScript directly with `tsx` in production too (`npm start` → `tsx src/index.ts`) instead of compiling to JS — the shared package exports `.ts` source, so a compile step would need a second build of `shared/`; `npm run build` still type-checks the server with `tsc`.
 - Added `server/src/app.ts` (not in `spec.md > File Structure`) so the simulation script can start a real server on a random port; `index.ts` only listens.
 - Spawn seats follow join order on both sides (server seats player *i* at `SPAWN_SEATS[i]`; the client finds its own index), so no extra spawn event was needed.
+- Added `shared/src/geometry.ts` (reach checks shared by the client's Use button and the server's validation), `client/src/game/NearbyWatcher.tsx`, `client/src/hud/labels.ts`, and a temporary `hud/GameOverNotice.tsx` — small helpers the spec's component list implied but didn't name.
+- Added a private `terminal:hackUsed` event so the Bluffer's red "hacked" screen clears when a classmate takes the bait, and an `AnswerOutcome` of `faked` for the Bluffer's pretend answers — the spec didn't say what the Bluffer sees after faking a task.
+- Students and the Fact-Checker can only open terminals on their task list ("No task for you at this terminal"); the Bluffer can open any terminal to look busy. Answer options are shuffled per question so the right answer isn't always in the same spot.
+- Desktop players can press E to use a terminal (in addition to the Use button), and task terminals show a bobbing yellow marker — both make the 4-window demo easier to follow.
