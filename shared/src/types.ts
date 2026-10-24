@@ -53,13 +53,6 @@ export interface PlayerPosition {
   heading: number;
 }
 
-/** A question piece lying on the floor. Its text is only revealed to whoever picks it up. */
-export interface PieceInfo {
-  id: string;
-  x: number;
-  z: number;
-}
-
 export interface ArrangeCard {
   id: string;
   text: string;
@@ -86,10 +79,26 @@ export interface TerminalQuestion {
 
 export type AnswerOutcome = "correct" | "strike" | "wrong";
 
+/** The real answer and why, shown once a question is settled (never after a plain wrong answer, which can be retried). */
+export interface Truth {
+  answer: string;
+  why: string;
+}
+
+/** One of this game's questions on the Game Over screen: the myth Study-Bot could push, and the truth. */
+export interface MythBusted {
+  question: string;
+  myth: string;
+  truth: string;
+  why: string;
+  solved: boolean;
+}
+
 export interface GameOver {
   winner: Winner;
   reason: string;
   roles: Record<string, Role>;
+  myths: MythBusted[];
 }
 
 export type ErrorCode =

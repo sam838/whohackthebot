@@ -29,7 +29,7 @@ export function TaskList() {
             {isBluffer ? `/${BLUFFER_MAX_PIECES}` : ""})
           </p>
           {bag.length === 0 ? (
-            <p className="empty-bag">Walk over paper scraps to pick them up.</p>
+            <p className="empty-bag">Examine desks, shelves, posters and more (look for the ◆) to find hidden pieces.</p>
           ) : (
             <ul className="bag">
               {bag.map((p) => (

@@ -31,6 +31,23 @@ export function GameOver() {
             );
           })}
         </ul>
+        {over.myths.length > 0 && (
+          <section className="myths" aria-label="Myths busted">
+            <h3>Myths busted</h3>
+            <ul>
+              {over.myths.map((m) => (
+                <li key={m.question}>
+                  <span className="myth-q">{m.question}</span>
+                  <span className="myth-row">
+                    <s className="myth-lie">{m.myth}</s>
+                    <span className="myth-truth">✓ {m.truth}</span>
+                  </span>
+                  <span className="myth-why">{m.why}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <button className="btn primary" onClick={leaveRoom}>
           Back to menu
         </button>

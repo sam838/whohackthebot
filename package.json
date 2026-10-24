@@ -2,6 +2,9 @@
   "name": "who-hacked-the-bot",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.11"
+  },
   "workspaces": [
     "shared",
     "server",
@@ -13,7 +16,9 @@
     "start": "npm run start -w server",
     "test": "vitest run",
     "sim": "tsx server/scripts/sim.ts",
-    "ai:check": "tsx --use-system-ca server/scripts/ai-check.ts"
+    "ai:check": "tsx --use-system-ca server/scripts/ai-check.ts",
+    "smoke": "tsx server/scripts/smoke.ts",
+    "balance": "tsx server/scripts/balance.ts"
   },
   "devDependencies": {
     "@types/node": "24.19.1",

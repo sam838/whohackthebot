@@ -6,7 +6,10 @@ import { POSITION_BROADCAST_RATE, REVEAL_SECONDS } from "@whtb/shared/constants"
 import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { ClientToServerEvents, ServerToClientEvents } from "@whtb/shared/events";
 import express from "express";
+import { existsSync } from "node:fs";
 import { createServer } from "node:http";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
 import type { Role } from "@whtb/shared/types";
 import { AiService } from "./ai";
@@ -16,11 +19,28 @@ import { RoomManager, gameState, lobbyState, positionsOf, type Room } from "./ro
 
 export type GameServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
-export function createApp(options: { ai?: AiService; revealMs?: number } = {}) {
+/** The built game page (`npm run build`), served by this same server in production. */
+const CLIENT_DIST = resolve(dirname(fileURLToPath(import.meta.url)), "../../client/dist");
+
+export function createApp(options: { ai?: AiService; revealMs?: number; clientDir?: string } = {}) {
   const app = express();
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
   });
+
+  // One service for everything: the game page and Socket.IO share a port (Render gives us one).
+  // In development Vite serves the page instead, so this only kicks in after a build.
+  const clientDir = options.clientDir ?? CLIENT_DIST;
+  if (existsSync(join(clientDir, "index.html"))) {
+    // Built files have hashed names, so they can be cached for a long time; index.html can't.
+    app.use(express.static(clientDir, { index: false, maxAge: "7d" }));
+    app.use((req, res, next) => {
+      if (req.method !== "GET" || req.path.startsWith("/socket.io")) return next();
+      // Any page (like a /?room=ABCD share link) gets the game, which reads the address itself.
+      res.set("Cache-Control", "no-cache");
+      res.sendFile(join(clientDir, "index.html"));
+    });
+  }
 
   const httpServer = createServer(app);
   const io: GameServer = new Server(httpServer, { cors: { origin: true } });
@@ -188,7 +208,7 @@ export function createApp(options: { ai?: AiService; revealMs?: number } = {}) {
     });
 
     socket.on("reveal:ready", () => act((g) => g.markReady(socket.id)));
-    socket.on("piece:pickup", (p) => act((g) => g.pickUp(socket.id, String(p?.pieceId))));
+    socket.on("spot:examine", (p) => act((g) => g.examine(socket.id, String(p?.spotId))));
     socket.on("terminal:open", (p) => act((g) => g.openTerminal(socket.id, String(p?.terminalId))));
     socket.on("terminal:arrange", (p) => act((g) => g.arrange(socket.id, Array.isArray(p?.order) ? p.order.map(String) : [])));
     socket.on("terminal:botArrange", () => act((g) => g.botArrange(socket.id)));

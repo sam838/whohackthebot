@@ -467,6 +467,17 @@ body {
   color: var(--ink);
 }
 
+.action.examine {
+  background: #fff;
+  color: var(--ink);
+  font-size: 17px;
+}
+
+/* Already searched: still allowed (pieces come back if someone leaves), just quieter. */
+.action.examine.searched {
+  background: #ece9f3;
+}
+
 .action.hack {
   width: 76px;
   height: 76px;
@@ -786,6 +797,17 @@ body {
 
 .result.meh {
   background: #f1eef6;
+}
+
+.result .truth {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.result .truth b {
+  font: inherit;
+  font-weight: 800;
 }
 
 /* Question pieces: task list and the arrange step */
@@ -1541,6 +1563,60 @@ body {
 
 .game-over.bluffer-won {
   background: #ffdede;
+}
+
+/* Myths busted: each question's myth crossed out next to the truth. */
+.myths {
+  text-align: left;
+  max-height: 34vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.myths h3 {
+  margin: 0 0 6px;
+  font: 800 18px var(--display);
+}
+
+.myths ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.myths li {
+  display: grid;
+  gap: 2px;
+}
+
+.myth-q {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.myth-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-weight: 700;
+}
+
+.myth-lie {
+  color: var(--strike);
+}
+
+.myth-truth {
+  color: var(--progress);
+}
+
+.myth-why {
+  font-size: 13px;
+  opacity: 0.75;
 }
 
 .reason {

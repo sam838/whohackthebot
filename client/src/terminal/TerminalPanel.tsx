@@ -195,6 +195,12 @@ function AnswerStep({ q }: { q: OpenQuestion }) {
         <div className={`result ${result.tone}`}>
           <b>{result.title}</b>
           <span>{result.line}</span>
+          {q.truth && (
+            <span className="truth">
+              {q.outcome === "strike" ? "The real answer: " : "✓ "}
+              <b>{q.truth.answer}</b>. {q.truth.why}
+            </span>
+          )}
         </div>
       )}
     </>

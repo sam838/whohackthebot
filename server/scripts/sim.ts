@@ -65,11 +65,7 @@ async function main() {
     console.log("start");
     const players = [host, a, b, c];
     const roleMsgs = new Map<Client, string[]>(players.map((s) => [s, []]));
-    const pieceMsgs = new Map<Client, Array<Record<string, unknown>>>(players.map((s) => [s, []]));
-    for (const s of players) {
-      s.on("game:role", ({ role }) => roleMsgs.get(s)!.push(role));
-      s.on("pieces:state", ({ pieces }) => pieceMsgs.set(s, pieces as unknown as Array<Record<string, unknown>>));
-    }
+    for (const s of players) s.on("game:role", ({ role }) => roleMsgs.get(s)!.push(role));
     const started = Promise.all(players.map((s) => once<{ phase: string }>(s, "game:state")));
     host.emit("lobby:start");
     check((await started).every((s) => s.phase === "reveal"), "all 4 open their role books first (phase reveal)");
@@ -93,22 +89,32 @@ async function main() {
     const bluffer = players.find((s) => roleOf(s) === "bluffer")!;
     const [student, helper] = players.filter((s) => roleOf(s) !== "bluffer");
 
-    console.log("shared question pieces");
-    const floor = pieceMsgs.get(student)!;
-    // 3 classmates × 2 questions × 3 pieces.
-    check(floor.length === 18 && floor.every((p) => !("text" in p)), "everyone sees 18 pieces on the floor, with no text");
-    check(pieceMsgs.get(bluffer)!.length === 18, "the Bluffer sees the pieces too (they can hoard)");
-    const walkAndGrab = async (who: Client, piece: Record<string, unknown>) => {
-      who.emit("move", { x: piece.x as number, z: piece.z as number, heading: 0 });
-      await new Promise((r) => setTimeout(r, 120));
-      const got = once<{ text: string }>(who, "piece:collected");
-      who.emit("piece:pickup", { pieceId: String(piece.id) });
-      return (await got).text;
+    console.log("hidden question pieces");
+    const { HIDING_SPOTS } = await import("@whtb/shared/pieces");
+    /** Walk up to a hiding spot and examine it; resolves to the piece found, if any. */
+    const examine = async (who: Client, spot: (typeof HIDING_SPOTS)[number]) => {
+      who.emit("move", { x: spot.x, z: spot.z, heading: 0 });
+      await new Promise((r) => setTimeout(r, 60));
+      const result = once<{ spotId: string; piece?: { id: string; text: string } }>(who, "spot:result");
+      who.emit("spot:examine", { spotId: spot.id });
+      return (await result).piece;
     };
-    // The helper grabs one piece; the student grabs all the others.
-    await walkAndGrab(helper, floor[0]);
-    for (const piece of floor.slice(1)) await walkAndGrab(student, piece);
-    check(true, "picked up pieces by walking onto them");
+    // The helper searches until they find one piece; the student searches everything else.
+    let next = 0;
+    let helperFound: { id: string; text: string } | undefined;
+    while (!helperFound) helperFound = await examine(helper, HIDING_SPOTS[next++]);
+    let studentFound = 0;
+    let empty = 0;
+    for (const spot of HIDING_SPOTS.slice(next)) {
+      if (await examine(student, spot)) studentFound++;
+      else empty++;
+    }
+    // 3 classmates × QUESTIONS_PER_CLASSMATE questions × 3 pieces, hidden among more spots than that.
+    const { QUESTIONS_PER_CLASSMATE } = await import("@whtb/shared/constants");
+    const totalPieces = 3 * QUESTIONS_PER_CLASSMATE * 3;
+    check(studentFound + 1 === totalPieces, `examining every hiding spot finds all ${totalPieces} pieces`);
+    check(empty > 0, "some hiding spots are empty (\"Nothing here\")");
+    check(typeof helperFound.text === "string" && helperFound.text.length > 0, "finding a piece reveals its text to the finder");
 
     console.log("teamwork at a terminal");
     const { TERMINALS } = await import("@whtb/shared/map");
@@ -122,7 +128,7 @@ async function main() {
 
     const arrangeStep = once<{ cards: unknown[] }>(student, "terminal:arrange");
     student.emit("terminal:open", { terminalId: target });
-    check((await arrangeStep).cards.length === 18, "the pool includes the helper's piece (17 + 1)");
+    check((await arrangeStep).cards.length === totalPieces, `the pool includes the helper's piece (${totalPieces - 1} + 1)`);
     const question = once<Record<string, unknown>>(student, "terminal:question");
     student.emit("terminal:botArrange");
     const q = await question;

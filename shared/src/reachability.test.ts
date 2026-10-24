@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { buildObstacles } from "./collision";
 import { INTERACT_RADIUS, PLAYER_RADIUS } from "./constants";
 import { distance } from "./geometry";
-import { MEETING_BUTTON, SPAWN_SEATS, TERMINALS, WORLD_DEPTH, WORLD_WIDTH, type Point } from "./map";
-import { PICKUP_RADIUS, PIECE_SPOTS } from "./pieces";
+import { MEETING_BUTTON, SPAWN_SEATS, TERMINALS, WORLD_DEPTH, WORLD_WIDTH, roomAt, type Point } from "./map";
+import { MAX_PLAYERS, QUESTIONS_PER_CLASSMATE } from "./constants";
+import { EXAMINE_RADIUS, HIDING_SPOTS, PIECE_ROOMS, PIECES_PER_QUESTION } from "./pieces";
 
 // Flood-fill the floor on a fine grid from the first classroom seat, keeping
 // only spots a player's body fits into, so furniture can never wall anything off.
@@ -50,7 +51,24 @@ describe("the school stays playable", () => {
     expect(canReach(MEETING_BUTTON, INTERACT_RADIUS)).toBe(true);
   });
 
-  it("every piece hiding spot can be walked onto", () => {
-    for (const s of PIECE_SPOTS) expect(canReach(s, PICKUP_RADIUS), `${s.room} ${s.x},${s.z}`).toBe(true);
+  it("every hiding spot can be reached and examined, in the room it says", () => {
+    for (const s of HIDING_SPOTS) {
+      expect(canReach(s, 0.3), `${s.id} reachable`).toBe(true);
+      expect(roomAt(s)?.id, `${s.id} room`).toBe(s.room);
+    }
+  });
+
+  it("hiding spots never sit where Use or the meeting button would take over", () => {
+    for (const s of HIDING_SPOTS) {
+      for (const t of TERMINALS) expect(distance(s, t), `${s.id} vs ${t.id}`).toBeGreaterThan(INTERACT_RADIUS);
+      expect(distance(s, MEETING_BUTTON), `${s.id} vs meeting button`).toBeGreaterThan(INTERACT_RADIUS);
+      for (const o of HIDING_SPOTS) if (o !== s) expect(distance(s, o), `${s.id} vs ${o.id}`).toBeGreaterThan(EXAMINE_RADIUS);
+    }
+  });
+
+  it("there are more hiding spots than pieces in the biggest game, in every piece room", () => {
+    expect(new Set(HIDING_SPOTS.map((s) => s.id)).size).toBe(HIDING_SPOTS.length);
+    expect(HIDING_SPOTS.length).toBeGreaterThan((MAX_PLAYERS - 1) * QUESTIONS_PER_CLASSMATE * PIECES_PER_QUESTION);
+    for (const room of PIECE_ROOMS) expect(HIDING_SPOTS.some((s) => s.room === room), room).toBe(true);
   });
 });

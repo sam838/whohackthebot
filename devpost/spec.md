@@ -30,7 +30,7 @@ PRD ref: `prd.md > The Core Journey`.
 7. **Terminal** → near a terminal, the action button appears → `terminal:open {terminalId}` → server checks you're close, picks a question, and decides Study-Bot's pick (the correct option, or the lie if the terminal is hacked, which clears the hack) → privately sends `terminal:question {prompt, choices, botPick, deadline}`.
    - **Double-check** → `terminal:doubleCheck` → server moves the deadline 8 seconds earlier and sends `terminal:hint`.
    - **Verify (Fact-Checker, once)** → `terminal:verify` → server replies `TRUE` or `FALSE` about `botPick`.
-   - **Hack (Bluffer)** → `terminal:hack {terminalId}` → server marks the terminal hacked and starts a 30s cooldown. Nobody else is told.
+   - **Hack (Bluffer)** → `terminal:hack {terminalId}` → server marks the terminal hacked and starts a 20s cooldown. Nobody else is told.
 8. **Answer** → `terminal:answer {choiceIndex}` → server checks it: correct means the task is done and progress +1; picking a lie Study-Bot recommended means **+1 strike**; any other wrong answer or a timeout leaves the task on your list → private `terminal:result`, then the updated public `game:state` (strikes and progress) to everyone → server checks win conditions.
 9. **Meeting** → in the classroom near the button → `meeting:call` → server checks proximity and that you haven't used your one call → phase `meeting` for everyone → chat messages (`chat:send` → `chat:message`) are allowed only in this phase → `vote:cast {targetId | null}`.
 10. **Vote result** → when all votes are in or 90 seconds pass → server ejects the most-voted player (a tie or skip ejects nobody) → `vote:result {ejectedId, wasBluffer}` → checks win conditions → back to `playing` with everyone placed in the classroom, or `over`.
@@ -100,7 +100,7 @@ Types and data both sides import, so client and server never disagree.
 - `events.ts`: typed Socket.IO event names and payloads (the list in **Socket Events**).
 - `map.ts`: room rectangles, wall segments, terminal positions (2 per room in Library, Science Lab, and Canteen, so 6 total), meeting button position, and classroom spawn seats. The client uses it for drawing and collision, the server for proximity checks.
 - `questions.ts`: the pre-written question set. See **Question Set**.
-- `constants.ts`: tuning values (min 4 / max 5 players, 3 tasks each, 3 strikes, 20s question timer, 8s double-check cost, 30s hack cooldown, 90s meeting, 1 meeting call per player, 15s reveal at most, interaction radius).
+- `constants.ts`: tuning values (min 4 / max 5 players, 3 tasks each, 3 strikes, 3 questions per classmate, 30s question timer, 8s double-check cost, 20s hack cooldown, 90s meeting, 1 meeting call per player, 15s reveal at most, interaction radius).
 - `quickFacts.ts`: role-book text (from `prd.md > Role Reveal`).
 
 ### Game Server (`server/`)
@@ -158,16 +158,16 @@ PRD ref: `prd.md > Study-Bot Terminals (the kernel)`, `prd.md > Bluffer: Hacking
 ### Question Pieces (server + client)
 PRD ref: `prd.md > Question Pieces`. Added in slice 3b, reworked into a shared puzzle in slice 3c.
 - `shared/questions.ts`: each question has `pieces` (3 ordered fragments joining into `prompt`) and `twistedPrompt` (a believable wrong question whose honest answer is the lie).
-- `shared/pieces.ts`: `PIECE_SPOTS`, free floor points on a grid inside each room.
-- `GameRoom`: picks 2 questions per classmate; each question's 3 pieces get home spots in three different rooms. A piece is on the floor, held by a player, or used. Pickup is checked by distance (the Bluffer holds at most 2). At a terminal, the pool is the pieces held by everyone alive standing within reach (the Bluffer included), snapshotted when Use is pressed. The Bluffer arranges and answers like anyone but can't cause a strike or use up their own hack. The opener's 3-piece arrangement must be one question's pieces in reading order. Study-Bot arranges only when a full question is in the pool, and uses `twistedPrompt` if hacked. Correct uses the pieces; anything else returns them. Leavers' pieces go back to their home spots.
-- Messages: everyone gets `pieces:state` (pieces on the floor: id and position, **no text**); the holder gets `game:bag` (their pieces with text).
-- Client: `game/Pieces3D.tsx` (paper scraps, auto-pickup by walking over), a bag and class board in the HUD, and `TerminalPanel` with a pool to pick 3 from (or "Let Study-Bot arrange it"); the answer step shows the 3 real pieces under the question.
+- `shared/pieces.ts`: `HIDING_SPOTS`, 34 searchable things (desks, posters, shelves, lockers, the fridge…), each with the floor point you stand on to examine it, a room, and a "where" phrase; `nearestSpot()` for both sides.
+- `GameRoom`: picks 3 questions per classmate; each question's 3 pieces hide in spots in the three rooms with the most free spots left (slightly shuffled), so pieces spread evenly. A piece is hidden, held by a player, or used. `examine(spot)` is checked by distance and hands over whatever hides there (the Bluffer holds at most 2). At a terminal, the pool is the pieces held by everyone alive standing within reach (the Bluffer included), snapshotted when Use is pressed. The Bluffer arranges and answers like anyone but can't cause a strike or use up their own hack. The opener's 3-piece arrangement must be one question's pieces in reading order. Study-Bot arranges only when a full question is in the pool, and uses `twistedPrompt` if hacked. Correct uses the pieces; anything else returns them. Leavers' pieces go back to their home spots.
+- Messages: nobody is told where pieces hide. `spot:examine` → private `spot:result` (the piece with its text, or nothing); the holder gets `game:bag` (their pieces with text).
+- Client: `game/Spots3D.tsx` (a ◆ marker over each searchable thing, grey once you've searched it), an Examine button and the E key, a bag and class board in the HUD, and `TerminalPanel` with a pool to pick 3 from (or "Let Study-Bot arrange it"); the answer step shows the 3 real pieces under the question.
 
 ### Practice Mode & Bots (server + client)
 PRD ref: `prd.md > Practice Mode`. Added during `5-build` (slice 5c).
 - `practice:start {name, character, color, role | "random"}` creates a room with the player and 3 bots, then starts it at once. The player's chosen role is fixed; the bots get the rest.
 - `shared/nav.ts`: a walkable grid built from the same obstacles as collision, and A* paths across it, so bots never get stuck on walls.
-- `server/src/bots.ts`: one `BotController` per practice room, ticked with the game loop. Each bot wanders to pieces, picks them up, walks to the human's terminal to help pool, solves full questions (trusting Study-Bot about 70% of the time), hacks if it is the Bluffer, may call a meeting after a strike, and in meetings chats canned lines and votes for whoever was seen near a hacked terminal. Bots act through the same `GameRoom` methods as players, so the rules can't be bent.
+- `server/src/bots.ts`: one `BotController` per practice room, ticked with the game loop. Each bot searches the nearest things it hasn't examined yet (it doesn't know where pieces hide), walks to the human's terminal to help pool, solves full questions (trusting Study-Bot about 70% of the time), hacks if it is the Bluffer, may call a meeting after a strike, and in meetings chats canned lines and votes for whoever was seen near a hacked terminal. Bots act through the same `GameRoom` methods as players, so the rules can't be bent.
 - Bots are server-side players with no socket. A practice room is deleted when its human leaves.
 
 ### AI Service (server)
@@ -204,7 +204,7 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | C→S | `lobby:start` | — | Host only, 4–5 players |
 | C→S | `practice:start` | `{name, character, color, role}` | Solo game with 3 bots |
 | C→S | `move` | `{x, z, heading}` | ~12/s, ignored unless `playing` |
-| C→S | `piece:pickup` | `{pieceId}` | Within reach; Bluffer max 2 held |
+| C→S | `spot:examine` | `{spotId}` | Within reach; Bluffer max 2 held |
 | C→S | `terminal:open` | `{terminalId}` | Within reach; pool of nearby classmates must hold 3+ pieces |
 | C→S | `terminal:arrange` | `{order: pieceIds[3]}` | 3 pool pieces in reading order |
 | C→S | `terminal:botArrange` | — | Ask Study-Bot to arrange |
@@ -221,7 +221,7 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | S→C | `game:tasks` | `{terminalIds[]}` | **Private** |
 | S→C | `game:state` | `{phase, players[] (id, name, character, color, alive), strikes, progress, goal, meetingCaller?, phaseEndsAt?}` | Room. Never includes roles |
 | S→C | `positions` | `{[id]: {x, z, heading}}` | Room, ~12/s |
-| S→C | `pieces:state` | `{pieces: {id, x, z}[]}` | Everyone; pieces on the floor, no text |
+| S→C | `spot:result` | `{spotId, piece?: {id, text}}` | Private; what you found there, if anything |
 | S→C | `game:bag` | `{pieces: {id, text}[]}` | **Private**: what you carry |
 | S→C | `terminal:arrange` | `{terminalId, cards: {id, text}[], msLeft}` | **Private**: the shuffled pool |
 | S→C | `terminal:arrangeWrong` | — | Private: try again |

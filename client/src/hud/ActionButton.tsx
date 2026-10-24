@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { socket } from "../net/socket";
 import { amAlive, panelOpen, useGame } from "../net/store";
 
-/** Context buttons: Use (at a terminal) and, for the Bluffer, Hack with its cooldown. */
+/** Context buttons: Use (at a terminal) and, for the Bluffer, Hack with its cooldown; Meeting; Examine. */
 export function ActionButton() {
   const near = useGame((s) => s.nearTerminal);
   const nearButton = useGame((s) => s.nearButton);
+  const nearSpot = useGame((s) => s.nearSpot);
+  const searched = useGame((s) => (s.nearSpot ? s.searched.includes(s.nearSpot) : false));
   const alive = useGame(amAlive);
   const playing = useGame((s) => s.game?.phase === "playing");
   const callsLeft = useGame((s) => (s.myId ? (s.game?.meetingCallsLeft[s.myId] ?? 0) : 0));
@@ -27,6 +29,15 @@ export function ActionButton() {
       <div className="actions">
         <button className="action meeting" disabled={callsLeft <= 0} onClick={() => socket.emit("meeting:call")}>
           {callsLeft > 0 ? "Meeting!" : "Used"}
+        </button>
+      </div>
+    );
+  }
+  if (!near && nearSpot) {
+    return (
+      <div className="actions">
+        <button className={`action examine ${searched ? "searched" : ""}`} onClick={() => socket.emit("spot:examine", { spotId: nearSpot })}>
+          Examine
         </button>
       </div>
     );

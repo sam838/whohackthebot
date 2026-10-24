@@ -17,9 +17,9 @@ import {
 import type { ServerToClientEvents } from "@whtb/shared/events";
 import { distance, nearMeetingButton } from "@whtb/shared/geometry";
 import { TERMINALS, type Point } from "@whtb/shared/map";
-import { PICKUP_RADIUS, PIECE_ROOMS, PIECE_SPOTS } from "@whtb/shared/pieces";
+import { EXAMINE_RADIUS, HIDING_SPOTS, PIECE_ROOMS } from "@whtb/shared/pieces";
 import { QUESTIONS, type Question } from "@whtb/shared/questions";
-import type { AnswerOutcome, ArrangeCard, ErrorCode, GameOver, PieceInfo, Role } from "@whtb/shared/types";
+import type { AnswerOutcome, ArrangeCard, ErrorCode, GameOver, Role } from "@whtb/shared/types";
 import { assignRoles, checkWinner, shuffle, tallyVotes, type Random, type WinResult } from "./rules";
 
 /** Where the game is between start and game over. */
@@ -37,14 +37,15 @@ export interface Sender {
   respawn(playerIds: string[]): void;
 }
 
-/** A piece is on the floor at its home spot, in someone's bag, or used up. */
+/** A piece is hidden in its home spot, in someone's bag, or used up. */
 interface Piece {
   id: string;
   question: Question;
   /** 0, 1, 2: reading order within its question. */
   index: number;
   text: string;
-  home: Point;
+  /** The hiding spot (shared/pieces.ts) it hides in, and goes back to if its holder leaves. */
+  home: string;
   holderId?: string;
   used: boolean;
 }
@@ -112,26 +113,30 @@ export class GameRoom {
 
     // Each question's 3 pieces start in three different rooms. Piece ids are
     // opaque so they never hint which question a piece belongs to.
-    let freeSpots = shuffle(PIECE_SPOTS, random);
+    let freeSpots = shuffle(HIDING_SPOTS, random);
     const idNumbers = shuffle([...Array(this.questions.length * 3).keys()], random);
     for (const question of this.questions) {
-      const rooms = shuffle(PIECE_ROOMS, random).slice(0, question.pieces.length);
+      // The 3 rooms with the most free spots left (a little shuffled), so pieces spread
+      // evenly and no room runs out even when the school is nearly full.
+      const rooms = PIECE_ROOMS.map((r) => ({ r, free: freeSpots.filter((s) => s.room === r).length + random() * 1.5 }))
+        .sort((a, b) => b.free - a.free)
+        .slice(0, question.pieces.length)
+        .map((o) => o.r);
       question.pieces.forEach((text, index) => {
         const spot = freeSpots.find((s) => s.room === rooms[index]) ?? freeSpots[0];
         freeSpots = freeSpots.filter((s) => s !== spot);
         const id = `piece-${idNumbers.pop()}`;
-        this.pieces.set(id, { id, question, index, text, home: { x: spot.x, z: spot.z }, used: false });
+        this.pieces.set(id, { id, question, index, text, home: spot.id, used: false });
       });
     }
   }
 
-  /** Tell each player, privately, their role; tell everyone where pieces lie. */
+  /** Tell each player, privately, their role. Where pieces hide stays secret. */
   dealSecrets(): void {
     for (const [id, role] of this.roles) {
       this.send.toPlayer(id, "game:role", { role });
       this.sendBag(id);
     }
-    this.sendFloor();
   }
 
   get over(): boolean {
@@ -186,14 +191,6 @@ export class GameRoom {
     this.send.toPlayer(playerId, "game:bag", { pieces: this.bagOf(playerId).map((p) => this.card(p)) });
   }
 
-  /** Pieces lying on the floor, without text, to everyone. */
-  private sendFloor(): void {
-    const floor: PieceInfo[] = [...this.pieces.values()]
-      .filter((p) => !p.used && !p.holderId)
-      .map((p) => ({ id: p.id, x: p.home.x, z: p.home.z }));
-    for (const id of this.roles.keys()) this.send.toPlayer(id, "pieces:state", { pieces: floor });
-  }
-
   private requireLiving(playerId: string): Role {
     const role = this.roles.get(playerId);
     if (!role || !this.alive.has(playerId) || this.over) throw new ActionError("NOT_ALLOWED", "You can't do that right now.");
@@ -223,19 +220,21 @@ export class GameRoom {
     return new Set([...this.open.values()].flatMap((o) => o.pool));
   }
 
-  pickUp(playerId: string, pieceId: string): void {
+  /** Search an object for a hidden piece: the player finds it, or "nothing here". */
+  examine(playerId: string, spotId: string): void {
     const role = this.requirePlaying(playerId);
-    const piece = this.pieces.get(pieceId);
-    if (!piece || piece.used || piece.holderId) return;
+    const spot = HIDING_SPOTS.find((s) => s.id === spotId);
     const pos = this.positionOf(playerId);
-    if (!pos || distance(pos, piece.home) > PICKUP_RADIUS + 0.4) throw new ActionError("TOO_FAR", "Walk onto the piece to pick it up.");
-    if (role === "bluffer" && this.bagOf(playerId).length >= BLUFFER_MAX_PIECES) {
+    if (!spot || !pos || distance(pos, spot) > EXAMINE_RADIUS + 0.4) throw new ActionError("TOO_FAR", "Walk up to it to examine it.");
+    const piece = [...this.pieces.values()].find((p) => p.home === spotId && !p.used && !p.holderId);
+    if (piece && role === "bluffer" && this.bagOf(playerId).length >= BLUFFER_MAX_PIECES) {
       throw new ActionError("HANDS_FULL", `Your hands are full (${BLUFFER_MAX_PIECES} pieces).`);
     }
-    piece.holderId = playerId;
-    this.send.toPlayer(playerId, "piece:collected", { pieceId, text: piece.text });
-    this.sendBag(playerId);
-    this.sendFloor();
+    if (piece) {
+      piece.holderId = playerId;
+      this.sendBag(playerId);
+    }
+    this.send.toPlayer(playerId, "spot:result", { spotId, piece: piece && this.card(piece) });
   }
 
   /**
@@ -418,15 +417,24 @@ export class GameRoom {
       this.strikeTerminals.push(q.terminalId);
     }
     // Anything but correct: the pieces simply stay in their owners' bags.
-    this.send.toPlayer(playerId, "terminal:result", { outcome });
+    // A settled question shows the truth; a plain wrong answer doesn't, since it can be retried.
+    const question = q.question;
+    const truth = question && outcome !== "wrong" ? { answer: question.choices[question.correctIndex], why: question.hint } : undefined;
+    this.send.toPlayer(playerId, "terminal:result", { outcome, truth });
     this.send.publicChanged();
     this.checkWin();
   }
 
   // --- Read-only views for practice bots (server/src/bots.ts) ---
 
-  floorPieces(): PieceInfo[] {
-    return [...this.pieces.values()].filter((p) => !p.used && !p.holderId).map((p) => ({ id: p.id, x: p.home.x, z: p.home.z }));
+  /** How many pieces are still hidden (not where: bots have to search like everyone). */
+  hiddenCount(): number {
+    return [...this.pieces.values()].filter((p) => !p.used && !p.holderId).length;
+  }
+
+  /** Where a piece hides. For tests only; nothing in play may ask this. */
+  spotOfForTests(pieceId: string): string | undefined {
+    return this.pieces.get(pieceId)?.home;
   }
 
   bagIds(playerId: string): string[] {
@@ -440,6 +448,11 @@ export class GameRoom {
 
   hasOpenTerminal(playerId: string): boolean {
     return this.open.has(playerId);
+  }
+
+  /** Terminals the Bluffer has hacked that nobody has used yet (the Bluffer sees these too). */
+  hackedTerminals(): string[] {
+    return [...this.hacked];
   }
 
   hackReady(): boolean {
@@ -565,7 +578,6 @@ export class GameRoom {
     this.open.delete(playerId);
     this.votes.delete(playerId);
     for (const p of this.pieces.values()) if (p.holderId === playerId) p.holderId = undefined;
-    this.sendFloor();
   }
 
   /** A player disconnected: same as being voted out, and the game checks for a winner right away. */
@@ -598,6 +610,13 @@ export class GameRoom {
 
   gameOver(): GameOver | undefined {
     if (!this.result) return undefined;
-    return { ...this.result, roles: Object.fromEntries(this.roles) };
+    const myths = this.questions.map((q) => ({
+      question: q.prompt,
+      myth: q.choices[q.lieIndex],
+      truth: q.choices[q.correctIndex],
+      why: q.hint,
+      solved: this.solved.has(q.id),
+    }));
+    return { ...this.result, roles: Object.fromEntries(this.roles), myths };
   }
 }

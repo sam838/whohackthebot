@@ -37,5 +37,6 @@ key, the game uses its own pre-written lines.
 
 - The school map and layout, the painted details (chalkboard, canteen menu, floors, walls),
   which are drawn in code in [`textures.ts`](client/src/game/textures.ts)
-- The question bank
+- The question bank: 18 hand-written myths and trivia questions, drafted with an AI assistant and
+  reviewed by the project's author
 - All code, built with an AI coding assistant (Claude Code)

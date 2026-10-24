@@ -5,7 +5,7 @@ export const MIN_PLAYERS = 4;
 export const MAX_PLAYERS = 5;
 export const TASKS_PER_PLAYER = 3;
 /** Class questions to solve per non-Bluffer (prd.md > Question Pieces). */
-export const QUESTIONS_PER_CLASSMATE = 2;
+export const QUESTIONS_PER_CLASSMATE = 3;
 /** The Bluffer can hoard at most this many pieces at once. */
 export const BLUFFER_MAX_PIECES = 2;
 export const STRIKES_TO_LOSE = 3;
@@ -13,7 +13,7 @@ export const STRIKES_TO_LOSE = 3;
 /** Time to arrange and answer once a terminal is open. */
 export const QUESTION_SECONDS = 30;
 export const DOUBLE_CHECK_COST_SECONDS = 8;
-export const HACK_COOLDOWN_SECONDS = 30;
+export const HACK_COOLDOWN_SECONDS = 20;
 export const MEETING_SECONDS = 90;
 /** How long the vote result stays on screen before play resumes. */
 export const VOTE_RESULT_SECONDS = 6;

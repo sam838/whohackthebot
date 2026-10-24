@@ -5,11 +5,12 @@ import type {
   GameOver,
   GameStatePublic,
   LobbyState,
-  PieceInfo,
   Role,
   TerminalQuestion,
+  Truth,
   VoteResult,
 } from "@whtb/shared/types";
+import { HIDING_SPOTS } from "@whtb/shared/pieces";
 import { create } from "zustand";
 import { applyPositions, localPlayer } from "../game/positions";
 import { socket } from "./socket";
@@ -27,6 +28,8 @@ export interface OpenQuestion extends TerminalQuestion {
   /** Study-Bot's explanation, written by Claude (see terminal:botSays). */
   botLine?: string;
   outcome?: AnswerOutcome;
+  /** The real answer and why, once the question is settled. */
+  truth?: Truth;
 }
 
 /** The arrange step: put your question pieces in order (prd.md > Question Pieces). */
@@ -52,8 +55,8 @@ interface GameStore {
   role: Role | undefined;
   /** Pieces you carry, with their text. */
   bag: ArrangeCard[];
-  /** Pieces lying on the floor (text unknown until picked up). */
-  pieces: PieceInfo[];
+  /** Hiding spots you've examined this game (they look "searched"). */
+  searched: string[];
   arrange: OpenArrange | undefined;
   question: OpenQuestion | undefined;
   verifyUsed: boolean;
@@ -64,6 +67,8 @@ interface GameStore {
   /** Updated by the scene when the local player walks in/out of reach. */
   nearTerminal: string | undefined;
   nearButton: boolean;
+  /** The hiding spot you're standing at, if any. */
+  nearSpot: string | undefined;
   chat: { fromId: string; text: string }[];
   voteResult: VoteResult | undefined;
   /** Who this player voted for in the current meeting (null = skip). */
@@ -79,7 +84,7 @@ interface GameStore {
 const freshGame = {
   role: undefined,
   bag: [],
-  pieces: [],
+  searched: [],
   arrange: undefined,
   question: undefined,
   verifyUsed: false,
@@ -88,6 +93,7 @@ const freshGame = {
   gameOver: undefined,
   nearTerminal: undefined,
   nearButton: false,
+  nearSpot: undefined,
   notice: undefined,
   chat: [],
   voteResult: undefined,
@@ -190,8 +196,11 @@ socket.on("error", (error) => {
 
 socket.on("game:role", ({ role }) => useGame.setState({ role }));
 socket.on("game:bag", ({ pieces }) => useGame.setState({ bag: pieces }));
-socket.on("pieces:state", ({ pieces }) => useGame.setState({ pieces }));
-socket.on("piece:collected", ({ text }) => showNotice(`Found a piece: “${text}”`));
+socket.on("spot:result", ({ spotId, piece }) => {
+  const where = HIDING_SPOTS.find((s) => s.id === spotId)?.label ?? "here";
+  useGame.setState((s) => ({ searched: s.searched.includes(spotId) ? s.searched : [...s.searched, spotId] }));
+  showNotice(piece ? `Found “${piece.text}” ${where}!` : "Nothing here.");
+});
 socket.on("terminal:arrange", ({ terminalId, cards, msLeft }) =>
   useGame.setState({ arrange: { terminalId, cards, endsAt: performance.now() + msLeft, totalMs: msLeft, wrongCount: 0 } }),
 );
@@ -216,7 +225,7 @@ socket.on("terminal:verifyResult", ({ botIsRight }) => {
   const q = useGame.getState().question;
   useGame.setState({ verifyUsed: true, question: q && { ...q, verified: botIsRight } });
 });
-socket.on("terminal:result", ({ outcome }) => {
+socket.on("terminal:result", ({ outcome, truth }) => {
   const q = useGame.getState().question;
   if (!q) {
     // Time ran out while still arranging.
@@ -224,12 +233,13 @@ socket.on("terminal:result", ({ outcome }) => {
     showNotice("Time's up! Everyone keeps their pieces. Try again.");
     return;
   }
-  const shown = { ...q, outcome };
+  const shown = { ...q, outcome, truth };
   useGame.setState({ question: shown });
-  // Show the result for a moment, then close the panel (unless a new one opened).
+  // Show the result for a moment (longer when there's a truth to read), then close
+  // the panel (unless a new one opened).
   setTimeout(() => {
     if (useGame.getState().question === shown) useGame.setState({ question: undefined });
-  }, 1800);
+  }, truth ? 4500 : 1800);
 });
 socket.on("terminal:hacked", ({ terminalId, cooldownMs }) =>
   useGame.setState((s) => ({ myHacks: [...s.myHacks, terminalId], hackReadyAt: performance.now() + cooldownMs })),

@@ -119,7 +119,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: Start a 4-window game and open the book in each window. Check that each shows the right character and role, the facts type out with sound, and nobody sees someone else's role.
   Commit: `Add book-style role reveal with typing sound`
 
-- [ ] **7. Ready to share: full question set and one-service production build**
+- [x] **7. Ready to share: full question set and one-service production build**
   Becomes usable: 15–20 reviewed school-subject and trivia questions, each with a plausible lie and a hint. `npm run build` followed by `npm start` serves the whole game and Socket.IO from one Node process on `$PORT`, ready for Render. The README covers how to run, play, and deploy, and `CREDITS.md` lists the models.
   Why now: Content and packaging come last because they depend on everything above. The learner reviews the questions because they're the game's voice.
   PRD ref: `prd.md > Study-Bot Terminals (the kernel)` (question content), `prd.md > What We're Building`
@@ -129,6 +129,26 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: Read and edit the question list. Then run `npm run build` and `npm start`, open `http://localhost:4000` in 4 windows, and play one full game.
   Commit: `Add full question set and production build`
 
+- [ ] **8. A bigger school with limited vision**
+  Becomes usable: The school roughly doubles: a new wing with a Gym, Server Room, Music Room, and Art Room joined by a second hallway, with 2 more terminals and more hiding spots. The camera shows more and the characters are smaller. Each player only sees a circle around themselves; walls and distance hide classmates (meetings and hall monitors see everyone). Bots only notice what they can see.
+  Why now: Expel (slice 9) needs places where people can be alone and a fair "can anyone see?" rule, so space and vision come first. Added in final review after the learner asked for an Among Us / Super Sus sized map.
+  PRD ref: `prd.md > Moving Around the School`, `prd.md > Question Pieces`
+  Spec ref: `spec.md > School Scene (client 3D)`, `spec.md > Game Server`
+  Build: Extend `shared/map.ts` (rooms, walls, furniture, terminals, seats), hiding spots, decor for the new rooms, camera distance and character scale, a shared `canSee(a, b)` (distance plus walls), a darkness overlay and hiding of unseen players on the client, bots' sightings through `canSee`, and re-run the balance check.
+  Verify (mechanical): Map tests (every room, terminal, and hiding spot reachable; spots clear of terminals); `canSee` tests (blocked by a wall, out of range, same room); unit tests and the simulation pass; `npm run balance` stays near even; build passes.
+  Learner check: Walk the whole new school in Practice, find the new rooms, and check that classmates appear only when you can see them.
+  Commit: `Double the school and add limited vision`
+
+- [ ] **9. Expel: the Bluffer's elimination power**
+  Becomes usable: The Bluffer can Expel a classmate standing next to them when no other classmate can see it (45 s cooldown, not in the first 30 s). An expulsion slip stays where it happened; whoever walks over it reports it and a meeting starts. Expelled players become hall monitors: see-through, can still search and carry pieces, can't vote, chat, or answer. The Bluffer wins when only they and one classmate are left.
+  Why now: The learner pointed out that careful players who never trust Study-Bot leave the Bluffer no way to win; an elimination route fixes that without changing the kernel.
+  PRD ref: `prd.md > Bluffer: Hacking`, `prd.md > Meetings and Voting`, `prd.md > Win and Game Over`
+  Spec ref: `spec.md > Game Server`, `spec.md > Socket Events`
+  Build: `expel` and slip reporting in `GameRoom` (using `canSee`), hall-monitor state, events, the Expel button and slip on the client, bots (the Bluffer bot hunts lone classmates, bots report slips and remember who was near), tests, simulation, balance re-check.
+  Verify (mechanical): Unit tests (expel blocked by a witness, by cooldown, and in the first 30 s; slip report starts a meeting; hall monitors can search but not vote or answer; Bluffer wins at 2 left); simulation passes; `npm run balance` near even; build passes.
+  Learner check: Play Practice as the Bluffer and expel a lone bot; play as a Student, find a slip, and argue it out in the meeting.
+  Commit: `Add Expel, expulsion slips, and hall monitors`
+
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored — after slice 3 (the kernel playable in 4 windows), so feedback on Study-Bot, timing, and feel can shape meetings, avatars, and the reveal. Done: learner played 4 windows, confirmed it works, and found that a fast class wins before the Bluffer matters — leading to slice 3b (question pieces)
@@ -136,7 +156,8 @@ Build mode: learn — learner tries every slice and approves before it is commit
 
 ## Final Review
 
-- [ ] Hide pieces inside objects you examine (paintings, shelves, desks): an Examine action finds a piece or says "Nothing here", not only pieces lying on the floor — learner request after slice 3b
+- [x] Hide pieces inside objects you examine (paintings, shelves, desks): an Examine action finds a piece or says "Nothing here", not only pieces lying on the floor — learner request after slice 3b. Built: hiding spots with an Examine button and the E key, ◆ markers, bots search too. The learner played it on the production build.
+- [x] Balance: the learner felt a Bluffer could never win. A simulation of 150 all-bot games agreed (Bluffer 8%). Fixed with a smarter bot Bluffer (hacks near classmates), 3 questions per classmate, and a 20 s hack cooldown: about 50/50.
 - [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
@@ -195,3 +216,8 @@ Activity mode: [not started]
 - Slice 6 (learner requests): a Skip button shows all the text at once; the book opens by itself instead of waiting for an "Open your book" tap; roles already read on this device show their text at once; the role panel's "Open your book" reopens it during play (closes with the button, Esc, or a tap outside, and closes itself for meetings and Game Over).
 - Slice 6: the photo is a still image posed for each role (Student: hand up, head tilted; Fact-Checker: plain; Bluffer: bandit mask, hands behind the back), drawn once with a throwaway renderer. The learner chose this over a spinning 3D model to keep the book light. A magnifying glass prop and role stickers were tried and removed at the learner's request (the blocky hands can't hold props convincingly).
 - Slice 6 bugs found from the learner's 4-window test and screen recording: the photo canvas grew without limit (resize loop), the closed and open book jumped between two layouts, the photo page showed before the cover had opened, a dark backing showed as the cover lifted, photos stayed blank in background tabs (browsers pause animation frames there), and the photo overflowed its frame. All fixed; ffmpeg was installed so recordings can be checked frame by frame.
+- Slice 7: 10 new questions drafted and approved by the learner (18 total). Added the truth reveal (the real answer and why after a correct answer or a strike, never after a plain wrong answer, which can be retried) and "Myths busted" on Game Over, after the learner asked how players learn the real answers. Express serves the built page with an any-page fallback; `npm run smoke` checks a running production server; README written. Question difficulty levels were discussed and moved to "later" (the bank is too small to split).
+- Final review: pieces are now hidden in 37 searchable spots instead of lying on the floor; the server no longer tells anyone where pieces are. Each question's pieces go in the 3 rooms with the most free spots left.
+- Final review: `npm run balance` added (all-bot games). Balance changed to 3 questions per classmate and a 20 s hack cooldown (from 2 and 30 s); the bot Bluffer now hacks the terminal nearest its classmates instead of a random one.
+- Final review: on tall screens the title's speech bubble overlapped the button; the bot and bubble now fit below the title.
+- Plan revision: slices 8 (bigger school and limited vision) and 9 (Expel) added at the learner's request, with 2 days left before the deadline. Killing was first advised against (copying Among Us); the learner pointed out that careful players leave the Bluffer no way to win, so Expel was designed as a school-themed elimination (no witnesses, slips, hall monitors). Elimination is a genre staple (Werewolf, Mafia), not Among Us's look.

@@ -1,5 +1,6 @@
 // Practice-mode bots (spec.md > Practice Mode & Bots). Simple rules, not smart AI:
-// wander and collect pieces, help the human at a terminal, solve full questions
+// search the school for hidden pieces (they don't know where pieces hide either),
+// help the human at a terminal, solve full questions
 // (often trusting Study-Bot blindly, like real players), hack if they're the
 // Bluffer, call a meeting after a strike, then chat and vote on who was seen
 // near the hacked terminal. Every action goes through GameRoom, so bots follow
@@ -10,7 +11,7 @@ import { INTERACT_RADIUS, PLAYER_RADIUS, WALK_SPEED } from "@whtb/shared/constan
 import { distance, nearMeetingButton } from "@whtb/shared/geometry";
 import { MEETING_BUTTON, ROOMS, TERMINALS, roomAt, type Point } from "@whtb/shared/map";
 import { findPath, isWalkable } from "@whtb/shared/nav";
-import { PICKUP_RADIUS } from "@whtb/shared/pieces";
+import { HIDING_SPOTS } from "@whtb/shared/pieces";
 import type { PlayerPosition } from "@whtb/shared/types";
 import type { MeetingRequest } from "./ai";
 import type { GameRoom } from "./game/GameRoom";
@@ -28,6 +29,7 @@ type Goal =
   | { kind: "solve"; terminalId: string; giveUpAt: number }
   | { kind: "help"; terminalId: string; until: number }
   | { kind: "hack"; terminalId: string }
+  | { kind: "search"; spotId: string }
   | { kind: "meeting" };
 
 interface Bot {
@@ -38,6 +40,8 @@ interface Bot {
   /** Scheduled steps while using a terminal. */
   terminalSteps: { at: number; run: () => void }[];
   suspicion: Map<string, number>;
+  /** Hiding spots this bot has already examined. */
+  searched: Set<string>;
   chatAt?: number;
   voteAt?: number;
 }
@@ -86,7 +90,7 @@ export class BotController {
   constructor(private world: BotWorld) {
     this.now = world.now ?? Date.now;
     this.random = world.random ?? Math.random;
-    this.bots = world.botIds.map((id) => ({ id, path: [], waitUntil: 0, terminalSteps: [], suspicion: new Map() }));
+    this.bots = world.botIds.map((id) => ({ id, path: [], waitUntil: 0, terminalSteps: [], suspicion: new Map(), searched: new Set() }));
     this.lastPhase = world.game.phase;
   }
 
@@ -173,6 +177,22 @@ export class BotController {
     return [...TERMINALS].sort((a, b) => distance(p, a) - distance(p, b))[0];
   }
 
+  /**
+   * Where a sharp Bluffer would hack: the not-yet-hacked terminal closest to where
+   * classmates are (only what a player can see: positions, not bags).
+   */
+  private terminalToHack(bot: Bot) {
+    const game = this.game;
+    const hacked = new Set(game.hackedTerminals());
+    const others = [...game.roles.keys()]
+      .filter((id) => id !== bot.id && game.isAlive(id))
+      .map((id) => this.world.position(id))
+      .filter((p): p is PlayerPosition => Boolean(p));
+    const score = (t: Point) => others.reduce((sum, p) => sum + 1 / (1 + distance(p, t)), 0);
+    const open = TERMINALS.filter((t) => !hacked.has(t.id));
+    return [...(open.length ? open : TERMINALS)].sort((a, b) => score(b) - score(a))[0];
+  }
+
   private busy(bot: Bot): boolean {
     return bot.terminalSteps.length > 0 || bot.goal?.kind === "solve" || bot.goal?.kind === "help" || bot.goal?.kind === "meeting";
   }
@@ -225,13 +245,24 @@ export class BotController {
     }
 
     if (role === "bluffer" && game.hackReady() && this.random() < 0.5) {
-      const t = this.pick(TERMINALS)!;
+      const t = this.terminalToHack(bot);
       return this.setGoal(bot, { kind: "hack", terminalId: t.id }, terminalStand(t.id));
     }
 
-    const floor = game.floorPieces();
-    const target = floor.length && this.random() < 0.75 ? this.pick(floor)! : this.roomMiddle();
-    this.setGoal(bot, { kind: "wander" }, target);
+    // Search something this bot hasn't checked yet, usually one of the nearest.
+    const here = this.world.position(bot.id);
+    if (here && game.hiddenCount() > 0 && this.random() < 0.85) {
+      let fresh = HIDING_SPOTS.filter((s) => !bot.searched.has(s.id));
+      if (!fresh.length) {
+        // Searched everything: pieces come back when someone leaves, so start over.
+        bot.searched.clear();
+        fresh = HIDING_SPOTS;
+      }
+      const nearest = [...fresh].sort((a, b) => distance(here, a) - distance(here, b)).slice(0, 3);
+      const spot = this.pick(nearest)!;
+      return this.setGoal(bot, { kind: "search", spotId: spot.id }, spot);
+    }
+    this.setGoal(bot, { kind: "wander" }, this.roomMiddle());
   }
 
   private roomMiddle(): Point {
@@ -248,11 +279,6 @@ export class BotController {
     if (bot.terminalSteps.length) {
       while (bot.terminalSteps.length && now >= bot.terminalSteps[0].at) this.try(bot.terminalSteps.shift()!.run);
       return;
-    }
-
-    // Grab any piece underfoot.
-    for (const p of game.floorPieces()) {
-      if (distance(pos, p) <= PICKUP_RADIUS) this.try(() => game.pickUp(bot.id, p.id));
     }
 
     if (now < bot.waitUntil) return;
@@ -295,6 +321,11 @@ export class BotController {
       case "hack":
         this.try(() => game.hack(bot.id, goal.terminalId));
         bot.waitUntil = now + 800;
+        return;
+      case "search":
+        this.try(() => game.examine(bot.id, goal.spotId));
+        bot.searched.add(goal.spotId);
+        bot.waitUntil = now + 500 + this.random() * 700;
         return;
       case "help":
         // Stay at the terminal until the help time is up, then go back to wandering.

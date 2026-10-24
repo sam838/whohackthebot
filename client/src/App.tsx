@@ -45,7 +45,7 @@ function Toast() {
   return <div className="toast">{text}</div>;
 }
 
-/** Desktop shortcut: E uses the terminal you are standing at (handy for the 4-window demo). */
+/** Desktop shortcut: E uses whatever you're standing at: the meeting button, a terminal, or something to examine. */
 function useUseKey() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -54,6 +54,7 @@ function useUseKey() {
       if (panelOpen(s) || s.gameOver || s.game?.phase !== "playing" || !amAlive(s)) return;
       if (s.nearButton) socket.emit("meeting:call");
       else if (s.nearTerminal) socket.emit("terminal:open", { terminalId: s.nearTerminal });
+      else if (s.nearSpot) socket.emit("spot:examine", { spotId: s.nearSpot });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -96,7 +97,7 @@ export function App() {
           <div className="hud">
             <StrikeBar />
             <TaskList />
-            {!isTouch && <div className="keys-hint">WASD to walk · E to use</div>}
+            {!isTouch && <div className="keys-hint">WASD to walk · E to use or examine</div>}
             {isTouch && <Joystick />}
             <ActionButton />
           </div>

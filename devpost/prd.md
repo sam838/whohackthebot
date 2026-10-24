@@ -131,19 +131,21 @@ Source: `scope.md > The Unique Kernel`.
   - [ ] **Double-check** costs time on the timer and shows a hint that helps judge the answer.
   - [ ] Picking the correct option adds class progress. Picking Study-Bot's corrupted recommendation adds **1 strike**, visible to everyone. Running out of time counts as a wrong answer.
   - [ ] Questions are pre-written school-subject and trivia questions, each with a **plausible wrong answer** for when the terminal is hacked.
+  - [ ] After a correct answer or a strike, the player sees the real answer and a one-line "why". A plain wrong answer shows no answer, because those pieces can be tried again.
 
 ### Question Pieces
 *Added during `5-build` after the first hands-on checkpoint (a fast class could finish every task before the Bluffer mattered), then reworked into a shared, teamwork puzzle after slice 3b. Source: learner ("escape room", "arrange the question", "everyone can help arrange", "meet at terminal").*
-- The class shares a board of questions to solve: 2 per classmate (6 with 4 players, 8 with 5). This replaces personal task lists.
-- Each question is split into 3 pieces scattered across different rooms. Nobody owns a piece.
+- The class shares a board of questions to solve: 3 per classmate (9 with 4 players, 12 with 5). This replaces personal task lists. *(Raised from 2 in final review after a balance simulation showed the Bluffer winning only about 1 game in 12; with 3 per classmate and a 20-second hack cooldown it's about even.)*
+- Each question is split into 3 pieces **hidden inside things** in different rooms (desks, posters, bookshelves, lockers, the fridge…). Nobody owns a piece. *(Changed in final review: the learner wanted pieces found by searching, not lying on the floor.)*
 - As a player, I want to pick up any piece and team up with classmates at a terminal so that solving questions takes cooperation and talk.
-  - [ ] Anyone can pick up any piece by walking over it; you only learn a piece's text once you hold it, and your bag shows what you carry.
+  - [ ] Searchable things show a small ◆ marker. Standing at one, **Examine** finds the piece hidden there ("Found “What is” in the fridge!") or says "Nothing here". There are more hiding spots than pieces, and nobody is told where pieces hide; things you've searched look searched.
+  - [ ] You only learn a piece's text once you find it, and your bag shows what you carry.
   - [ ] The Bluffer collects pieces like anyone (at most 2 at a time); their pieces pool like anyone's, so nobody can be cleared or exposed by a terminal test. The Bluffer can arrange and answer too, but can never cause a strike, and never uses up their own hack.
   - [ ] At a terminal, the pieces of every classmate standing there are pooled, without showing who brought which.
   - [ ] Whoever presses Use picks 3 pieces from the pool and puts them in order, or lets Study-Bot arrange a full question from the pool.
   - [ ] When the terminal is hacked, Study-Bot arranges a **believable wrong question** that its lie answers; the 3 real pieces are shown underneath.
   - [ ] A correct answer uses up those 3 pieces and adds class progress; a wrong answer or trusted lie returns them to whoever brought them.
-  - [ ] If a classmate leaves the game, their pieces return to their original spots.
+  - [ ] If a classmate leaves the game, their pieces go back into the things they were found in.
   - [ ] Any terminal can be used for any question.
 
 ### Bluffer: Hacking
@@ -169,6 +171,7 @@ Source: `scope.md > The Unique Kernel`.
 - [ ] Class wins when the Bluffer is voted out ("kicked out of school") or class progress reaches the goal.
 - [ ] Bluffer wins at **3 strikes**, or when only the Bluffer and one other player remain.
 - [ ] Game Over shows the winning side, reveals every player's role, and offers a way back to the menu.
+- [ ] Game Over shows **Myths busted**: each of the game's questions with the myth Study-Bot could push, crossed out, next to the truth and why.
 - [ ] There is no game timer.
 
 ## States and Boundaries
@@ -250,6 +253,7 @@ Drafted by the agent as placeholders; the learner accepted them as drafted at ap
 - More special roles.
 - AI-generated questions and lies (riskiest: a bad question breaks a round).
 - A real playtest with friends to tune balance.
+- Practice bot difficulty (easy bots trust Study-Bot and vote randomly; hard bots double-check and track who was near hacked terminals). Question difficulty levels need a much bigger question bank first.
 
 ## Non-Goals
 - **Not an educational quiz app** — no lessons, scores, or teacher dashboards.

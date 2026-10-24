@@ -76,14 +76,14 @@ describe("practice roles", () => {
 });
 
 describe("practice bots", () => {
-  it("walk around, pick up pieces, and solve or get fooled at terminals", () => {
+  it("walk around, find hidden pieces by examining things, and solve or get fooled at terminals", () => {
     const { game, positions, run } = practice("student");
     const start = { ...positions.get("bot-0")! };
-    const floorBefore = game.floorPieces().length;
+    const hiddenBefore = game.hiddenCount();
     run(240);
     const moved = positions.get("bot-0")!;
     expect(Math.hypot(moved.x - start.x, moved.z - start.z)).toBeGreaterThan(1);
-    expect(game.floorPieces().length).toBeLessThan(floorBefore);
+    expect(game.hiddenCount()).toBeLessThan(hiddenBefore);
     expect(game.progress + game.strikes).toBeGreaterThan(0);
   });
 

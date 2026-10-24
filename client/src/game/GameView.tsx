@@ -4,10 +4,10 @@ import type { PublicPlayer } from "@whtb/shared/types";
 import { FollowCamera } from "./FollowCamera";
 import { LIGHTING } from "./lighting";
 import { NearbyWatcher } from "./NearbyWatcher";
-import { Pieces3D } from "./Pieces3D";
 import { Player } from "./Player";
 import { RemotePlayer } from "./RemotePlayer";
 import { SchoolMap } from "./SchoolMap";
+import { Spots3D } from "./Spots3D";
 import { useMovement } from "./useMovement";
 
 interface SceneProps {
@@ -39,7 +39,7 @@ function Scene({ players, myId }: SceneProps) {
         ))}
       <FollowCamera target={me} />
       <NearbyWatcher me={me} />
-      <Pieces3D me={me} />
+      <Spots3D />
     </>
   );
 }

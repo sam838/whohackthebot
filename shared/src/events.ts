@@ -8,10 +8,10 @@ import type {
   GameOver,
   GameStatePublic,
   LobbyState,
-  PieceInfo,
   PlayerPosition,
   Role,
   TerminalQuestion,
+  Truth,
   VoteResult,
 } from "./types";
 
@@ -24,7 +24,8 @@ export interface ClientToServerEvents {
   /** Play alone against 3 bots, with the role you choose. */
   "practice:start": (p: { name: string; character: string; color: string; role: Role | "random" }) => void;
   move: (p: PlayerPosition) => void;
-  "piece:pickup": (p: { pieceId: string }) => void;
+  /** Search an object (a desk, a poster, the fridge…) for a hidden question piece. */
+  "spot:examine": (p: { spotId: string }) => void;
   "terminal:open": (p: { terminalId: string }) => void;
   "terminal:arrange": (p: { order: string[] }) => void;
   "terminal:botArrange": () => void;
@@ -50,9 +51,8 @@ export interface ServerToClientEvents {
   "game:role": (p: { role: Role }) => void;
   /** The pieces you carry, with their text. */
   "game:bag": (p: { pieces: ArrangeCard[] }) => void;
-  "piece:collected": (p: { pieceId: string; text: string }) => void;
-  // Everyone: pieces lying on the floor, without their text.
-  "pieces:state": (p: { pieces: PieceInfo[] }) => void;
+  /** What you found when you examined something: a piece, or nothing. */
+  "spot:result": (p: { spotId: string; piece?: ArrangeCard }) => void;
   "terminal:arrange": (p: { terminalId: string; cards: ArrangeCard[]; msLeft: number }) => void;
   "terminal:arrangeWrong": () => void;
   "terminal:question": (q: TerminalQuestion) => void;
@@ -60,7 +60,7 @@ export interface ServerToClientEvents {
   /** Study-Bot's explanation, written by Claude, for the question you have open. */
   "terminal:botSays": (p: { terminalId: string; text: string | null }) => void;
   "terminal:verifyResult": (p: { botIsRight: boolean }) => void;
-  "terminal:result": (p: { outcome: AnswerOutcome }) => void;
+  "terminal:result": (p: { outcome: AnswerOutcome; truth?: Truth }) => void;
   "terminal:hacked": (p: { terminalId: string; cooldownMs: number }) => void;
   /** To the Bluffer: someone just got your hacked answer. */
   "terminal:hackUsed": (p: { terminalId: string }) => void;

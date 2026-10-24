@@ -1,7 +1,8 @@
+import { HACK_COOLDOWN_SECONDS, QUESTIONS_PER_CLASSMATE } from "@whtb/shared/constants";
 import { TERMINALS } from "@whtb/shared/map";
-import { PIECE_SPOTS } from "@whtb/shared/pieces";
+import { HIDING_SPOTS } from "@whtb/shared/pieces";
 import { QUESTIONS } from "@whtb/shared/questions";
-import type { PieceInfo, Role } from "@whtb/shared/types";
+import type { Role } from "@whtb/shared/types";
 import { describe, expect, it } from "vitest";
 import { GameRoom, type Sender } from "./GameRoom";
 import { assignRoles, checkWinner, tallyVotes } from "./rules";
@@ -30,19 +31,18 @@ function setup(n = 4) {
   const byRole = (role: Role) => [...game.roles].filter(([, r]) => r === role).map(([id]) => id);
   const last = (id: string, event: string) => sent.filter((s) => s.to === id && s.event === event).at(-1)?.payload;
   const all = (id: string, event: string) => sent.filter((s) => s.to === id && s.event === event).map((s) => s.payload);
-  const floor = (): PieceInfo[] => last(ids[0], "pieces:state").pieces;
   const bag = (id: string): string[] => last(id, "game:bag").pieces.map((p: { id: string }) => p.id);
   const walkTo = (id: string, terminalId: string) => {
     const t = TERMINALS.find((x) => x.id === terminalId)!;
     positions.set(id, { x: t.x, z: t.z + 0.9 });
   };
   const pieceIdsOf = (questionIndex: number) => game.pieceIdsOf(game.questions[questionIndex]);
-  /** Walk onto a piece and pick it up. */
+  const spotOf = (pieceId: string) => HIDING_SPOTS.find((s) => s.id === game.spotOfForTests(pieceId))!;
+  /** Walk up to where a piece hides and examine it. */
   const grab = (id: string, pieceId: string) => {
-    const p = floor().find((f) => f.id === pieceId);
-    if (!p) throw new Error(`piece ${pieceId} not on floor`);
-    positions.set(id, { x: p.x, z: p.z });
-    game.pickUp(id, pieceId);
+    const spot = spotOf(pieceId);
+    positions.set(id, { x: spot.x, z: spot.z });
+    game.examine(id, spot.id);
   };
   /** One player grabs all 3 pieces of question i, walks to the terminal, opens and arranges it. */
   const solveSetup = (id: string, qi: number, terminalId = "library-1", how: "you" | "studybot" = "you") => {
@@ -58,7 +58,7 @@ function setup(n = 4) {
   };
   const roomLast = (event: string) => sent.filter((x) => x.to === "room" && x.event === event).at(-1)?.payload;
   const toButton = (id: string) => positions.set(id, { x: 10.4, z: 5.6 });
-  return { game, sent, byRole, last, all, floor, bag, walkTo, pieceIdsOf, grab, solveSetup, advance, positions, roomLast, toButton, respawned, ids };
+  return { game, sent, byRole, last, all, spotOf, bag, walkTo, pieceIdsOf, grab, solveSetup, advance, positions, roomLast, toButton, respawned, ids };
 }
 
 describe("rules", () => {
@@ -83,44 +83,59 @@ describe("rules", () => {
   });
 
   it("every question's pieces read as its prompt, and its lie differs from its answer", () => {
-    expect(QUESTIONS.length).toBeGreaterThanOrEqual(8);
+    expect(QUESTIONS.length).toBeGreaterThanOrEqual(15);
+    expect(new Set(QUESTIONS.map((q) => q.id)).size).toBe(QUESTIONS.length);
     for (const q of QUESTIONS) {
       expect(q.pieces).toHaveLength(3);
+      expect(q.pieces.every((p) => p.trim().length > 0)).toBe(true);
       expect(q.pieces.join(" ")).toBe(q.prompt);
       expect(q.twistedPrompt).not.toBe(q.prompt);
+      expect(q.choices).toHaveLength(4);
+      expect(new Set(q.choices).size).toBe(4);
+      for (const i of [q.correctIndex, q.lieIndex]) expect(Number.isInteger(i) && i >= 0 && i < 4).toBe(true);
       expect(q.lieIndex).not.toBe(q.correctIndex);
+      expect(q.hint.trim().length).toBeGreaterThan(0);
     }
   });
 });
 
 describe("shared question pieces", () => {
-  it("has 2 questions per classmate, each with 3 pieces in 3 different rooms, with no text on the floor", () => {
-    for (const n of [4, 5]) {
-      const { game, floor } = setup(n);
-      expect(game.questions).toHaveLength((n - 1) * 2);
-      expect(floor()).toHaveLength((n - 1) * 2 * 3);
-      for (const p of floor()) {
-        expect(Object.keys(p).sort()).toEqual(["id", "x", "z"]);
-        expect(p.id).toMatch(/^piece-\d+$/); // opaque: no question id leaks
-      }
+  it("has QUESTIONS_PER_CLASSMATE questions per classmate, each with 3 pieces hidden in 3 different rooms, one per spot, and nothing sent about where", () => {
+    // Placement is random, so check many games.
+    for (const n of [4, 4, 5, 5].flatMap((x) => Array<number>(20).fill(x))) {
+      const { game, sent, spotOf } = setup(n);
+      expect(game.questions).toHaveLength((n - 1) * QUESTIONS_PER_CLASSMATE);
+      expect(game.hiddenCount()).toBe((n - 1) * QUESTIONS_PER_CLASSMATE * 3);
+      const spots = game.questions.flatMap((q) => game.pieceIdsOf(q).map(spotOf));
+      expect(new Set(spots.map((s) => s.id)).size).toBe(spots.length);
       for (const q of game.questions) {
-        const rooms = game.pieceIdsOf(q).map((id) => {
-          const p = floor().find((f) => f.id === id)!;
-          return PIECE_SPOTS.find((s) => s.x === p.x && s.z === p.z)!.room;
-        });
-        expect(new Set(rooms).size).toBe(3);
+        expect(new Set(game.pieceIdsOf(q).map((id) => spotOf(id).room)).size).toBe(3);
+        for (const id of game.pieceIdsOf(q)) expect(id).toMatch(/^piece-\d+$/); // opaque: no question id leaks
       }
+      // At the start, players hear only their role and their (empty) bag.
+      expect(new Set(sent.map((m) => m.event))).toEqual(new Set(["game:role", "game:bag"]));
     }
   });
 
-  it("anyone can pick up any piece, only when standing on it, and learns its text", () => {
-    const { game, byRole, floor, bag, grab, last, pieceIdsOf } = setup();
+  it("examining finds the piece hidden there, only when standing close, or says nothing's there", () => {
+    const { game, byRole, bag, grab, last, pieceIdsOf, positions, spotOf } = setup();
     const s = byRole("student")[0];
-    expect(() => game.pickUp(s, pieceIdsOf(0)[0])).toThrow("Walk onto the piece");
+    const spot = spotOf(pieceIdsOf(0)[0]);
+    positions.set(s, { x: spot.x + 3, z: spot.z });
+    expect(() => game.examine(s, spot.id)).toThrow("Walk up to it");
     grab(s, pieceIdsOf(0)[0]);
     expect(bag(s)).toEqual([pieceIdsOf(0)[0]]);
-    expect(last(s, "piece:collected").text).toBe(game.questions[0].pieces[0]);
-    expect(floor().map((f) => f.id)).not.toContain(pieceIdsOf(0)[0]);
+    expect(last(s, "spot:result")).toEqual({ spotId: spot.id, piece: { id: pieceIdsOf(0)[0], text: game.questions[0].pieces[0] } });
+    // Searching the same spot again: it's empty now.
+    game.examine(s, spot.id);
+    expect(last(s, "spot:result")).toEqual({ spotId: spot.id, piece: undefined });
+    // A spot that never had a piece.
+    const used = new Set(game.questions.flatMap((q) => game.pieceIdsOf(q).map((id) => spotOf(id).id)));
+    const empty = HIDING_SPOTS.find((h) => !used.has(h.id))!;
+    positions.set(s, { x: empty.x, z: empty.z });
+    game.examine(s, empty.id);
+    expect(last(s, "spot:result").piece).toBeUndefined();
+    expect(game.hiddenCount()).toBe(game.questions.length * 3 - 1);
   });
 
   it("the Bluffer can hoard at most 2 pieces", () => {
@@ -212,6 +227,8 @@ describe("shared question pieces", () => {
     let q = solveSetup(s, 0);
     game.answer(s, q.botPick);
     expect(last(s, "terminal:result").outcome).toBe("strike");
+    // After a strike the player learns the real answer and why.
+    expect(last(s, "terminal:result").truth).toEqual({ answer: game.questions[0].choices[game.questions[0].correctIndex], why: game.questions[0].hint });
     expect(game.strikes).toBe(1);
     expect(bag(s)).toHaveLength(3);
 
@@ -220,23 +237,28 @@ describe("shared question pieces", () => {
     q = last(s, "terminal:question");
     game.answer(s, (q.botPick + 1) % 4);
     expect(last(s, "terminal:result").outcome).toBe("wrong");
+    expect(last(s, "terminal:result").truth).toBeUndefined(); // no free answer for the retry
     expect(bag(s)).toHaveLength(3);
 
     game.openTerminal(s, "library-1");
     game.arrange(s, pieceIdsOf(0));
     game.answer(s, last(s, "terminal:question").botPick);
     expect(last(s, "terminal:result").outcome).toBe("correct");
+    expect(last(s, "terminal:result").truth?.why).toBe(game.questions[0].hint);
     expect(bag(s)).toHaveLength(0);
     expect(game.progress).toBe(1);
   });
 
   it("a leaver's pieces go back to where they were found", () => {
-    const { game, byRole, grab, floor, pieceIdsOf } = setup();
-    const s = byRole("student")[0];
-    const before = floor().find((f) => f.id === pieceIdsOf(0)[0])!;
+    const { game, byRole, grab, spotOf, pieceIdsOf, positions, last } = setup();
+    const [s, other] = byRole("student");
+    const spot = spotOf(pieceIdsOf(0)[0]);
     grab(s, pieceIdsOf(0)[0]);
     game.removePlayer(s);
-    expect(floor().find((f) => f.id === pieceIdsOf(0)[0])).toEqual(before);
+    // It's hidden in the same place again, for the next person to find.
+    positions.set(other, { x: spot.x, z: spot.z });
+    game.examine(other, spot.id);
+    expect(last(other, "spot:result").piece?.id).toBe(pieceIdsOf(0)[0]);
   });
 
   it("leaving a terminal costs nothing: no strike, no progress, pieces kept", () => {
@@ -360,7 +382,7 @@ describe("GameRoom", () => {
     walkTo(b, "library-1");
     game.hack(b, "library-1");
     walkTo(b, "lab-1");
-    expect(() => game.hack(b, "lab-1")).toThrow("Hack ready in 30s");
+    expect(() => game.hack(b, "lab-1")).toThrow(`Hack ready in ${HACK_COOLDOWN_SECONDS}s`);
     advance(30_000);
     expect(() => game.hack(b, "lab-1")).not.toThrow();
   });
@@ -392,8 +414,12 @@ describe("GameRoom", () => {
       game.answer(s, q.botPick);
       expect(last(s, "terminal:result").outcome).toBe("correct");
     });
-    expect(game.progress).toBe(6);
+    expect(game.progress).toBe(game.questions.length);
     expect(game.gameOver()?.winner).toBe("class");
+    // "Myths busted": every question this game, the myth next to the truth.
+    const myths = game.gameOver()!.myths;
+    expect(myths).toHaveLength(game.questions.length);
+    expect(myths.every((m) => m.solved && m.myth !== m.truth && m.why.length > 0)).toBe(true);
   });
 
   it("the class wins if the Bluffer leaves; the Bluffer wins when only 2 are left", () => {
@@ -536,10 +562,10 @@ describe("meetings", () => {
 
 describe("role reveal", () => {
   it("blocks pieces and terminals until class starts", () => {
-    const { game, floor, grab, ids } = setup();
+    const { game, grab, ids, pieceIdsOf } = setup();
     game.beginReveal(20_000);
     expect(game.phase).toBe("reveal");
-    expect(() => grab(ids[0], floor()[0].id)).toThrow("Class hasn't started yet.");
+    expect(() => grab(ids[0], pieceIdsOf(0)[0])).toThrow("Class hasn't started yet.");
   });
 
   it("starts class as soon as everyone is ready, counting bots and leavers", () => {

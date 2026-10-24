@@ -253,7 +253,10 @@ export function TitleBackground({ line1 = "I'm always right!", line2 = "…proba
       const h = canvas.height;
       const wide = w / h > 1.1;
       // Where the bot stands, and how big everything is.
-      const s = wide ? Math.min(w / 1600, h / 900) : Math.min(w / 900, h / 1500);
+      // Tall screens: the logo and button fill the top 55% (styles.css .title-content), so the
+      // bot (about 460 units) and its bubble (about 310) must fit in the 40% below.
+      const s = wide ? Math.min(w / 1600, h / 900) : Math.min(w / 900, h / 1950);
+      const lowestBubbleTop = wide ? 16 * s : h * 0.56;
       const L = live.current;
       const showBot = wide || L.botOnNarrow;
       const botX = wide ? w * 0.7 : w * 0.5;
@@ -320,7 +323,7 @@ export function TitleBackground({ line1 = "I'm always right!", line2 = "…proba
         const gap = 6 * s;
         // The bubble sits above the highest the bot may rise, and the bot's rise (idle
         // bounce plus the jump-in overshoot) is smoothly capped there, so it never reaches the tail.
-        const bubbleTop = Math.max(16 * s, antennaTop - gap - 22 * s - 280 * s);
+        const bubbleTop = Math.max(lowestBubbleTop, antennaTop - gap - 22 * s - 280 * s);
         const maxLift = Math.max(0, antennaTop - gap - (bubbleTop + 280 * s));
         const lift = Math.abs(Math.sin(t * 0.004)) * 26 * s - offset;
         const cappedLift = lift > 0 ? (maxLift > 0 ? maxLift * Math.tanh(lift / maxLift) : 0) : lift;
