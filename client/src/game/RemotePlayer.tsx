@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
-import { Player } from "./Player";
+import { PLAYER_SCALE, Player } from "./Player";
+import { isVisible } from "./Vision";
 import { remotePositions } from "./positions";
 import type { Body } from "./useMovement";
 
@@ -8,7 +9,19 @@ import type { Body } from "./useMovement";
  * Another player's character. Each frame it glides toward the latest position
  * the server sent, so 12 updates a second still look smooth at 60 frames.
  */
-export function RemotePlayer({ id, color, character }: { id: string; color: string; character: string }) {
+export function RemotePlayer({
+  id,
+  name,
+  color,
+  character,
+  viewer,
+}: {
+  id: string;
+  name: string;
+  color: string;
+  character: string;
+  viewer: React.RefObject<Body>;
+}) {
   const body = useRef<Body | null>(null);
 
   useFrame((_, delta) => {
@@ -31,5 +44,5 @@ export function RemotePlayer({ id, color, character }: { id: string; color: stri
   const spawn = remotePositions.get(id);
   if (!body.current && spawn) body.current = { ...spawn, moving: false };
 
-  return <Player color={color} character={character} body={body} />;
+  return <Player color={color} character={character} body={body} scale={PLAYER_SCALE} seen={(at) => isVisible(viewer.current, at)} name={name} />;
 }

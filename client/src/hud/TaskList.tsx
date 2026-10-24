@@ -7,6 +7,7 @@ import { ROLE_NAMES, ROLE_REMINDERS } from "./labels";
 export function TaskList() {
   const role = useGame((s) => s.role);
   const bag = useGame((s) => s.bag);
+  const newPieceId = useGame((s) => s.newPieceId);
   const canOpenBook = useGame((s) => s.game?.phase === "playing" && !panelOpen(s));
   const [open, setOpen] = useState(true);
   if (!role) return null;
@@ -29,11 +30,13 @@ export function TaskList() {
             {isBluffer ? `/${BLUFFER_MAX_PIECES}` : ""})
           </p>
           {bag.length === 0 ? (
-            <p className="empty-bag">Examine desks, shelves, posters and more (look for the ◆) to find hidden pieces.</p>
+            <p className="empty-bag">Walk up to desks, shelves, posters and more: a glowing ring means you can Examine it for hidden pieces.</p>
           ) : (
             <ul className="bag">
               {bag.map((p) => (
-                <li key={p.id}>“{p.text}”</li>
+                <li key={p.id} className={p.id === newPieceId ? "new" : undefined}>
+                  “{p.text}”{p.id === newPieceId && <span className="new-tag">NEW</span>}
+                </li>
               ))}
             </ul>
           )}

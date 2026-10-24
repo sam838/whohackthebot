@@ -19,7 +19,7 @@ Everyone gets a secret role in their **Student Handbook** at the start:
 | **Bluffer** (1 player) | You hacked Study-Bot. Hack terminals so it gives confident wrong answers, and blend in. You win when the class trusts 3 wrong answers. |
 | **Fact-Checker** (1 player) | Like a Student, but you can **Verify** one answer to see if Study-Bot is telling the truth. Stay hidden. |
 
-1. **Search for pieces.** Each question is split into 3 pieces hidden in different rooms: inside desks, behind posters, between books, in the lockers, even in the fridge. Walk up to anything with a ◆ and **Examine** it. Some hiding spots are empty.
+1. **Search for pieces.** Each question is split into 3 pieces hidden in different rooms: inside desks, behind posters, between books, in the lockers, even in the fridge. Walk up to things: a glowing ring on the floor means you can **Examine** it. Some hiding spots are empty.
 2. **Pool them at a terminal.** Everyone standing at the same terminal shares their pieces. Put 3 in the right order, or tap "Let Study-Bot arrange it". A hacked Study-Bot quietly builds a *different* question whose answer is its lie.
 3. **Answer.** Study-Bot recommends an answer with a confidence meter. **Double-check** costs 8 seconds and shows a hint. Trusting a hacked answer gives the class a strike, which everyone sees.
 4. **Meet and vote.** Anyone can press the button in Class 7A to call a meeting: chat, accuse, and vote someone out of school.

@@ -4,7 +4,7 @@ import type { Body } from "./useMovement";
 
 // Fixed angle above and in front of the player (spec.md > Look and Feel):
 // about 50° down, never rotated by the player.
-const OFFSET = { y: 11, z: 9 };
+const OFFSET = { y: 14, z: 11.5 };
 /** At game start the camera swoops down from high above the school. */
 const INTRO_HEIGHT = 34;
 const INTRO_DELAY_MS = 1500;

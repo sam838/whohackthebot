@@ -129,7 +129,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: Read and edit the question list. Then run `npm run build` and `npm start`, open `http://localhost:4000` in 4 windows, and play one full game.
   Commit: `Add full question set and production build`
 
-- [ ] **8. A bigger school with limited vision**
+- [x] **8. A bigger school with limited vision**
   Becomes usable: The school roughly doubles: a new wing with a Gym, Server Room, Music Room, and Art Room joined by a second hallway, with 2 more terminals and more hiding spots. The camera shows more and the characters are smaller. Each player only sees a circle around themselves; walls and distance hide classmates (meetings and hall monitors see everyone). Bots only notice what they can see.
   Why now: Expel (slice 9) needs places where people can be alone and a fair "can anyone see?" rule, so space and vision come first. Added in final review after the learner asked for an Among Us / Super Sus sized map.
   PRD ref: `prd.md > Moving Around the School`, `prd.md > Question Pieces`
@@ -221,3 +221,8 @@ Activity mode: [not started]
 - Final review: `npm run balance` added (all-bot games). Balance changed to 3 questions per classmate and a 20 s hack cooldown (from 2 and 30 s); the bot Bluffer now hacks the terminal nearest its classmates instead of a random one.
 - Final review: on tall screens the title's speech bubble overlapped the button; the bot and bubble now fit below the title.
 - Plan revision: slices 8 (bigger school and limited vision) and 9 (Expel) added at the learner's request, with 2 days left before the deadline. Killing was first advised against (copying Among Us); the learner pointed out that careful players leave the Bluffer no way to win, so Expel was designed as a school-themed elimination (no witnesses, slips, hall monitors). Elimination is a genre staple (Werewolf, Mafia), not Among Us's look.
+- Slice 8: 4 new rooms (Gym, Server Room, Music Room, Art Room) along a hallway twice as long, 2 more terminals (server-1, art-1), 57 hiding spots. The balance check showed the Bluffer winning 77% on the bigger map, so questions per classmate went back to 2 (with the 20 s cooldown): about 50/50, games about 7 minutes.
+- Slice 8: limited vision with a shared `canSee`; bots keep their own sightings and the Bluffer bot hacks near where it last saw classmates. The learner asked whether vision is a good idea; kept as a circle for the hackathon, with room-based vision noted for later.
+- Slice 8 (learner feedback): name tags in each player's color (it was hard to tell who's who); the new rooms filled with decoration (they looked empty); hoops fixed (the rings stood upright and floated above the low walls); floating ◆ markers replaced by floor rings shown only when close (they looked like visual noise); Examine got a 🔍 icon, a 1-second search bar, and a NEW tag in the bag; the Bluffer's photo pose simplified (hands behind the back read as squatting); a loading splash downloads all models and fonts first (the avatar popped in from a placeholder bean), shown for at least 2.5 s with a credit line, cross-fading into the title.
+- Slice 8 (layout): Game Over fits any laptop window (only Myths busted scrolls), scrollbars are themed, and the title bubble fits on tall screens.
+- Tooling: screenshot scripts left 62 headless Edge processes and 10.5 GB of temporary profiles behind and filled the C: drive; cleaned up, and the scripts now stop Edge by profile folder and delete the profile.

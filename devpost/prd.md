@@ -119,6 +119,10 @@ Source: `scope.md > Inspiration & Identity`.
 ### Moving Around the School
 - [ ] An on-screen joystick moves the player's character. Other players are visible moving in real time.
 - [ ] The school has a few rooms, starting in the classroom. See **Assumptions to Confirm** for the room count.
+  *(Final review: doubled to 8 rooms plus a long hallway: Class 7A, Library, Science Lab, Canteen, Gym, Server Room, Music Room, Art Room.)*
+- [ ] **Limited vision:** during class you see a circle around you (about a room across); walls and distance hide classmates and darken the rest of the school. Meetings, the role book, Game Over, and expelled players see everyone.
+- [ ] Every classmate you can see has a **name tag in their player color** above their head, so sightings are clear ("green Kevin left the server room").
+- [ ] The game downloads all models and fonts behind a short loading splash (at least 2.5 s, with a progress bar and a credit line), so nothing pops in later.
 - [ ] A task list shows which terminals the player still needs to visit.
 - [ ] Strike count (e.g. "Strikes: 1/3") and class progress are always visible to everyone.
 
@@ -135,10 +139,10 @@ Source: `scope.md > The Unique Kernel`.
 
 ### Question Pieces
 *Added during `5-build` after the first hands-on checkpoint (a fast class could finish every task before the Bluffer mattered), then reworked into a shared, teamwork puzzle after slice 3b. Source: learner ("escape room", "arrange the question", "everyone can help arrange", "meet at terminal").*
-- The class shares a board of questions to solve: 3 per classmate (9 with 4 players, 12 with 5). This replaces personal task lists. *(Raised from 2 in final review after a balance simulation showed the Bluffer winning only about 1 game in 12; with 3 per classmate and a 20-second hack cooldown it's about even.)*
+- The class shares a board of questions to solve: 2 per classmate (6 with 4 players, 8 with 5). This replaces personal task lists. *(Balance, tuned with `npm run balance`: on the first small school the Bluffer won only about 1 game in 12, so it went to 3 per classmate with a 20-second hack cooldown. The bigger school (slice 8) adds enough walking that 2 per classmate with the 20-second cooldown is about even.)*
 - Each question is split into 3 pieces **hidden inside things** in different rooms (desks, posters, bookshelves, lockers, the fridge…). Nobody owns a piece. *(Changed in final review: the learner wanted pieces found by searching, not lying on the floor.)*
 - As a player, I want to pick up any piece and team up with classmates at a terminal so that solving questions takes cooperation and talk.
-  - [ ] Searchable things show a small ◆ marker. Standing at one, **Examine** finds the piece hidden there ("Found “What is” in the fridge!") or says "Nothing here". There are more hiding spots than pieces, and nobody is told where pieces hide; things you've searched look searched.
+  - [ ] Walking close to a searchable thing shows a glowing ring on the floor in front of it (the learner found floating markers distracting). Standing at one, **Examine** finds the piece hidden there ("Found “What is” in the fridge!") or says "Nothing here". There are more hiding spots than pieces, and nobody is told where pieces hide; things you've searched look searched.
   - [ ] You only learn a piece's text once you find it, and your bag shows what you carry.
   - [ ] The Bluffer collects pieces like anyone (at most 2 at a time); their pieces pool like anyone's, so nobody can be cleared or exposed by a terminal test. The Bluffer can arrange and answer too, but can never cause a strike, and never uses up their own hack.
   - [ ] At a terminal, the pieces of every classmate standing there are pooled, without showing who brought which.
@@ -253,6 +257,7 @@ Drafted by the agent as placeholders; the learner accepted them as drafted at ap
 - More special roles.
 - AI-generated questions and lies (riskiest: a bad question breaks a round).
 - A real playtest with friends to tune balance.
+- Room-based vision (see your whole room and a little through doorways) instead of a circle; clearer, but more work to draw.
 - Practice bot difficulty (easy bots trust Study-Bot and vote randomly; hard bots double-check and track who was near hacked terminals). Question difficulty levels need a much bigger question bank first.
 
 ## Non-Goals

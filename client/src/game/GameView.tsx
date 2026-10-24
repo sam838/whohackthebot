@@ -4,11 +4,12 @@ import type { PublicPlayer } from "@whtb/shared/types";
 import { FollowCamera } from "./FollowCamera";
 import { LIGHTING } from "./lighting";
 import { NearbyWatcher } from "./NearbyWatcher";
-import { Player } from "./Player";
+import { PLAYER_SCALE, Player } from "./Player";
 import { RemotePlayer } from "./RemotePlayer";
 import { SchoolMap } from "./SchoolMap";
 import { Spots3D } from "./Spots3D";
 import { useMovement } from "./useMovement";
+import { VisionShade, shade } from "./Vision";
 
 interface SceneProps {
   players: PublicPlayer[];
@@ -31,15 +32,16 @@ function Scene({ players, myId }: SceneProps) {
       <directionalLight position={LIGHTING.sunPosition} intensity={LIGHTING.sunIntensity} color={LIGHTING.sunColor} />
       <ambientLight intensity={LIGHTING.ambientIntensity} color={LIGHTING.ambientColor} />
       <SchoolMap />
-      <Player color={myColor} character={myCharacter} body={me} isYou ghost={!players[myIndex]?.alive} />
+      <Player color={myColor} character={myCharacter} body={me} isYou ghost={!players[myIndex]?.alive} scale={PLAYER_SCALE} />
       {players
         .filter((p) => p.id !== myId && p.alive)
         .map((p) => (
-          <RemotePlayer key={p.id} id={p.id} color={p.color} character={p.character} />
+          <RemotePlayer key={p.id} id={p.id} name={p.name} color={p.color} character={p.character} viewer={me} />
         ))}
       <FollowCamera target={me} />
       <NearbyWatcher me={me} />
-      <Spots3D />
+      <VisionShade me={me} />
+      <Spots3D me={me} />
     </>
   );
 }
@@ -47,9 +49,11 @@ function Scene({ players, myId }: SceneProps) {
 export function GameView(props: SceneProps) {
   return (
     <div className="game">
-      <Canvas dpr={[1, 2]} camera={{ fov: 40, position: [2, 11, 13] }}>
+      <Canvas dpr={[1, 2]} camera={{ fov: 40, position: [2, 14, 15] }}>
         <Scene {...props} />
       </Canvas>
+      {/* Limited vision: darkness outside your circle, moved by VisionShade each frame. */}
+      <div className="vision-shade" ref={(el) => void (shade.el = el)} aria-hidden />
     </div>
   );
 }

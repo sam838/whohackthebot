@@ -52,10 +52,31 @@ export const HIDING_SPOTS: HidingSpot[] = [
   { id: "canteen-table-1", room: "canteen", label: "under a canteen table", x: 19, z: 13 },
   { id: "canteen-table-2", room: "canteen", label: "under a canteen table", x: 16.5, z: 16.8 },
   { id: "trash-can", room: "canteen", label: "in the trash can", x: 22.6, z: 14 },
+  // Gym
+  { id: "bleachers", room: "gym", label: "under the bleachers", x: 31, z: 2.3 },
+  { id: "gym-mat", room: "gym", label: "under the gym mat", x: 27, z: 5.5 },
+  { id: "ball-cart", room: "gym", label: "in the ball cart", x: 35.6, z: 6.6 },
+  { id: "scoreboard", room: "gym", label: "behind the scoreboard", x: 25.5, z: 1.1 },
+  { id: "trophy-case", room: "gym", label: "in the trophy case", x: 36.5, z: 1.1 },
+  // Server Room
+  ...[40, 42, 44].map((x, i): HidingSpot => ({ id: `server-rack-${i + 1}`, room: "server", label: "behind a server rack", x, z: 1.8 })),
+  { id: "operator-desk", room: "server", label: "under the operator's desk", x: 44.5, z: 6.4 },
+  { id: "router-box", room: "server", label: "in the router box", x: 38.9, z: 5 },
+  // Music Room
+  { id: "piano", room: "music", label: "inside the piano", x: 26.5, z: 12.1 },
+  { id: "drums", room: "music", label: "in the bass drum", x: 32, z: 12.3 },
+  { id: "speaker", room: "music", label: "behind the speaker", x: 33.3, z: 17.3 },
+  { id: "guitar-case", room: "music", label: "in the guitar case", x: 25.6, z: 16.6 },
+  { id: "sheet-music", room: "music", label: "in the sheet music", x: 33.7, z: 10.9 },
+  // Art Room
+  ...[38, 41].map((x, i): HidingSpot => ({ id: `easel-${i + 1}`, room: "art", label: "behind a painting on an easel", x, z: 14.7 })),
+  { id: "art-table", room: "art", label: "under the art table", x: 39.4, z: 16.3 },
+  { id: "paint-shelf", room: "art", label: "between the paint pots", x: 37, z: 11.4 },
+  { id: "drying-rack", room: "art", label: "on the drying rack", x: 44, z: 16.8 },
 ];
 
 /** Each question's pieces hide in different rooms, so the class has to spread out. */
-export const PIECE_ROOMS: RoomId[] = ["classroom", "library", "lab", "canteen", "hallway"];
+export const PIECE_ROOMS: RoomId[] = ["classroom", "library", "lab", "canteen", "gym", "server", "music", "art", "hallway"];
 
 /** How close you must stand to examine something. */
 export const EXAMINE_RADIUS = 1.1;

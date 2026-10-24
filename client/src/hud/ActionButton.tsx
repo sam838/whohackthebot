@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { socket } from "../net/socket";
-import { amAlive, panelOpen, useGame } from "../net/store";
+import { amAlive, panelOpen, startSearch, useGame } from "../net/store";
 
 /** Context buttons: Use (at a terminal) and, for the Bluffer, Hack with its cooldown; Meeting; Examine. */
 export function ActionButton() {
@@ -36,7 +36,10 @@ export function ActionButton() {
   if (!near && nearSpot) {
     return (
       <div className="actions">
-        <button className={`action examine ${searched ? "searched" : ""}`} onClick={() => socket.emit("spot:examine", { spotId: nearSpot })}>
+        <button className={`action examine ${searched ? "searched" : ""}`} onClick={() => startSearch(nearSpot)}>
+          <span className="action-icon" aria-hidden>
+            🔍
+          </span>
           Examine
         </button>
       </div>

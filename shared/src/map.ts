@@ -2,7 +2,7 @@
 // the server uses it for proximity checks. x runs left→right, z runs top→bottom
 // (away from → toward the camera).
 
-export type RoomId = "classroom" | "library" | "lab" | "canteen" | "hallway";
+export type RoomId = "classroom" | "library" | "lab" | "canteen" | "gym" | "server" | "music" | "art" | "hallway";
 
 export interface Room {
   id: RoomId;
@@ -32,7 +32,17 @@ export interface Furniture {
     | "books"
     | "sink"
     | "counter"
-    | "vending";
+    | "vending"
+    // The new wing (plain boxes, dressed up in client/src/game/Decor.tsx).
+    | "bleachers"
+    | "mat"
+    | "ballCart"
+    | "serverRack"
+    | "piano"
+    | "drumRiser"
+    | "speaker"
+    | "easel"
+    | "paintShelf";
   x: number;
   z: number;
   w: number;
@@ -57,7 +67,7 @@ export interface Point {
   z: number;
 }
 
-export const WORLD_WIDTH = 24;
+export const WORLD_WIDTH = 46;
 export const WORLD_DEPTH = 18;
 export const WALL_HEIGHT = 1.6;
 export const WALL_THICKNESS = 0.3;
@@ -67,23 +77,39 @@ export const ROOMS: Room[] = [
   { id: "library", name: "Library", x: 12, z: 0, w: 12, d: 8, color: "#cdbbe8" },
   { id: "lab", name: "Science Lab", x: 0, z: 10, w: 12, d: 8, color: "#b8e0d2" },
   { id: "canteen", name: "Canteen", x: 12, z: 10, w: 12, d: 8, color: "#f7c59f" },
-  { id: "hallway", name: "Hallway", x: 0, z: 8, w: 24, d: 2, color: "#e4e1ea" },
+  // The new wing, east of the first four rooms.
+  { id: "gym", name: "Gym", x: 24, z: 0, w: 14, d: 8, color: "#f4d6a8" },
+  { id: "server", name: "Server Room", x: 38, z: 0, w: 8, d: 8, color: "#b9c6d8" },
+  { id: "music", name: "Music Room", x: 24, z: 10, w: 11, d: 8, color: "#e8c1c8" },
+  { id: "art", name: "Art Room", x: 35, z: 10, w: 11, d: 8, color: "#c8e6c9" },
+  { id: "hallway", name: "Hallway", x: 0, z: 8, w: 46, d: 2, color: "#e4e1ea" },
 ];
 
-// Doorways are the gaps at x 5–7 and x 17–19 on the hallway walls.
+// Every room opens onto the long hallway through a 2-unit doorway (the gaps below).
 export const WALLS: WallSegment[] = [
-  [0, 0, 24, 0],
-  [0, 18, 24, 18],
+  [0, 0, 46, 0],
+  [0, 18, 46, 18],
   [0, 0, 0, 18],
-  [24, 0, 24, 18],
+  [46, 0, 46, 18],
+  // between rooms
   [12, 0, 12, 8],
   [12, 10, 12, 18],
+  [24, 0, 24, 8],
+  [24, 10, 24, 18],
+  [38, 0, 38, 8],
+  [35, 10, 35, 18],
+  // hallway, north side: doors at x 5–7, 17–19, 30–32 (gym), 41–43 (server room)
   [0, 8, 5, 8],
   [7, 8, 17, 8],
-  [19, 8, 24, 8],
+  [19, 8, 30, 8],
+  [32, 8, 41, 8],
+  [43, 8, 46, 8],
+  // hallway, south side: doors at x 5–7, 17–19, 28.5–30.5 (music), 39.5–41.5 (art)
   [0, 10, 5, 10],
   [7, 10, 17, 10],
-  [19, 10, 24, 10],
+  [19, 10, 28.5, 10],
+  [30.5, 10, 39.5, 10],
+  [41.5, 10, 46, 10],
 ];
 
 const desks: Furniture[] = [];
@@ -115,6 +141,21 @@ export const FURNITURE: Furniture[] = [
   { kind: "sink", x: 8.6, z: 10.6, w: 1.2, d: 0.7, h: 1.0, color: "#dfe6ea", solid: true },
   { kind: "counter", x: 20.8, z: 10.6, w: 2.2, d: 0.7, h: 1.0, color: "#c98f5a", solid: true },
   { kind: "vending", x: 12.7, z: 12.4, w: 0.8, d: 0.7, h: 1.8, color: "#e5484d", solid: true },
+  // Gym
+  { kind: "bleachers", x: 31, z: 1, w: 8, d: 1.4, h: 1, color: "#8aa1c1", solid: true },
+  { kind: "mat", x: 27, z: 5.5, w: 2.4, d: 1.6, h: 0.1, color: "#3d7dd8", solid: false },
+  { kind: "ballCart", x: 36.6, z: 6.6, w: 1, d: 0.7, h: 0.7, color: "#7a7f87", solid: true },
+  // Server Room: where Study-Bot lives
+  ...[40, 42, 44].map((x): Furniture => ({ kind: "serverRack", x, z: 0.75, w: 1.2, d: 0.9, h: 1.9, color: "#2b2d3a", solid: true })),
+  { kind: "desk", x: 44.5, z: 5.5, w: 1.4, d: 0.8, h: 0.75, color: "#c98f5a", solid: true },
+  // Music Room
+  { kind: "piano", x: 26.5, z: 11, w: 2.4, d: 1, h: 1.1, color: "#1f1d2b", solid: true },
+  { kind: "drumRiser", x: 32, z: 13.5, w: 1.6, d: 1.4, h: 0.25, color: "#6f5f8c", solid: true },
+  { kind: "speaker", x: 34.2, z: 17.3, w: 0.8, d: 0.7, h: 1.3, color: "#33303d", solid: true },
+  // Art Room
+  ...[38, 41].map((x): Furniture => ({ kind: "easel", x, z: 14, w: 1, d: 0.3, h: 1.6, color: "#a8744f", solid: true })),
+  { kind: "table", x: 41.5, z: 16.3, w: 3, d: 1.2, h: 0.75, color: "#f2d0a4", solid: true },
+  { kind: "paintShelf", x: 37, z: 10.6, w: 2, d: 0.6, h: 1.4, color: "#7fb3d5", solid: true },
 ];
 
 export const TERMINAL_SIZE = { w: 0.9, d: 0.6 };
@@ -126,6 +167,8 @@ export const TERMINALS: TerminalSpot[] = [
   { id: "lab-2", room: "lab", x: 10.8, z: 11.4 },
   { id: "canteen-1", room: "canteen", x: 22.8, z: 11.4 },
   { id: "canteen-2", room: "canteen", x: 22.8, z: 16.6 },
+  { id: "server-1", room: "server", x: 45.2, z: 3.5 },
+  { id: "art-1", room: "art", x: 45.2, z: 13 },
 ];
 
 export const MEETING_BUTTON: Point = { x: 10.4, z: 4.6 };

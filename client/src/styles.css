@@ -467,6 +467,13 @@ body {
   color: var(--ink);
 }
 
+/* Limited vision: everything outside your circle is darkened (game/Vision.tsx). */
+.vision-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .action.examine {
   background: #fff;
   color: var(--ink);
@@ -520,6 +527,7 @@ body {
     max(12px, env(safe-area-inset-left));
   background: rgba(20, 16, 34, 0.55);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .panel {
@@ -1553,8 +1561,17 @@ body {
   opacity: 0.8;
 }
 
+/* Game Over always fits the window: only the Myths busted list shrinks and scrolls. */
 .game-over {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+}
+
+.game-over > * {
+  flex: none;
 }
 
 .game-over.class-won {
@@ -1566,9 +1583,13 @@ body {
 }
 
 /* Myths busted: each question's myth crossed out next to the truth. */
+.game-over > .myths {
+  flex: 1 1 auto;
+  min-height: 96px;
+}
+
 .myths {
   text-align: left;
-  max-height: 34vh;
   overflow-y: auto;
   background: var(--paper);
   border: 3px solid var(--ink);
@@ -2049,4 +2070,236 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* Themed scrollbars for boxes that scroll inside a panel (chat, Myths busted, tall panels). */
+.myths,
+.chat-log,
+.panel-backdrop {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.myths::-webkit-scrollbar,
+.chat-log::-webkit-scrollbar,
+.panel-backdrop::-webkit-scrollbar {
+  width: 10px;
+}
+
+.myths::-webkit-scrollbar-track,
+.chat-log::-webkit-scrollbar-track,
+.panel-backdrop::-webkit-scrollbar-track {
+  background: rgba(107, 79, 216, 0.1);
+  border-radius: 999px;
+  margin: 6px 0;
+}
+
+.myths::-webkit-scrollbar-thumb,
+.chat-log::-webkit-scrollbar-thumb,
+.panel-backdrop::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border: 2px solid var(--paper);
+  border-radius: 999px;
+}
+
+.myths::-webkit-scrollbar-thumb:hover,
+.chat-log::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-dark);
+}
+
+/* Never scroll sideways: long words wrap instead of widening a panel. */
+.panel,
+.myths,
+.chat-log {
+  overflow-wrap: anywhere;
+}
+
+.myths::-webkit-scrollbar-button,
+.chat-log::-webkit-scrollbar-button,
+.panel-backdrop::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Startup: everything downloads before the title appears (screens/LoadingScreen.tsx). */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: #ffcf5a;
+}
+
+.loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(360px, 100%);
+}
+
+.loading-bot {
+  width: 96px;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--ink);
+  border: 8px solid var(--studybot);
+  outline: 4px solid var(--ink);
+  border-radius: 22px;
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+.loading-eye {
+  width: 16px;
+  height: 9px;
+  border-radius: 16px 16px 0 0;
+  background: #7fe3ff;
+  animation: blink 2.4s infinite;
+}
+
+@keyframes blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+.loading-title {
+  margin: 0;
+  font: 800 28px var(--display);
+  color: var(--ink);
+}
+
+.loading-track {
+  width: 100%;
+  height: 16px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.loading-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+.loading-screen {
+  transition: opacity 0.4s ease;
+}
+
+.loading-screen.leaving {
+  opacity: 0;
+}
+
+.loading-credit {
+  margin: 18px 0 0;
+  font: 700 13px var(--body);
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+.loading-text {
+  margin: 0;
+  font: 700 15px var(--body);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-bot,
+  .loading-eye {
+    animation: none;
+  }
+}
+
+/* Examine: the button's icon, the short search, and the new piece in your bag. */
+.action.examine {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  line-height: 1;
+}
+
+.action-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.search-progress {
+  position: absolute;
+  left: 50%;
+  bottom: max(84px, calc(env(safe-area-inset-bottom) + 72px));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 8px;
+  width: min(320px, calc(100% - 32px));
+  padding: 10px 14px 12px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink);
+  font: 800 16px var(--display);
+  color: var(--ink);
+  text-align: center;
+}
+
+.search-track {
+  height: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.search-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--studybot);
+  transform-origin: left;
+  animation: search-fill linear forwards;
+}
+
+@keyframes search-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.bag li.new {
+  border-color: var(--studybot);
+  background: #fff6d6;
+  animation: bag-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.new-tag {
+  margin-left: 6px;
+  font: 800 10px var(--display);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--studybot);
+  border-radius: 999px;
+  padding: 1px 6px;
+  vertical-align: 2px;
+}
+
+@keyframes bag-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-fill,
+  .bag li.new {
+    animation: none;
+  }
 }

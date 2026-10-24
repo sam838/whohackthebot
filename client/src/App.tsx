@@ -1,10 +1,12 @@
 import type { Avatar } from "@whtb/shared/avatars";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { loadAvatar, saveAvatar } from "./avatar/avatarStorage";
 import { GameView } from "./game/GameView";
 import { attachKeyboard } from "./game/input";
 import { ActionButton } from "./hud/ActionButton";
+import { SearchProgress } from "./hud/SearchProgress";
 import { GameIntro } from "./screens/GameIntro";
+import { LoadingScreen } from "./screens/LoadingScreen";
 import { RoleReveal } from "./screens/RoleReveal";
 import { MENU_LINES } from "./screens/MenuBackdrop";
 import { TitleBackground } from "./screens/TitleBackground";
@@ -15,7 +17,7 @@ import { Joystick } from "./hud/Joystick";
 import { StrikeBar } from "./hud/StrikeBar";
 import { TaskList } from "./hud/TaskList";
 import { socket } from "./net/socket";
-import { amAlive, currentScreen, panelOpen, useGame } from "./net/store";
+import { amAlive, currentScreen, panelOpen, startSearch, useGame } from "./net/store";
 import { Join } from "./screens/Join";
 import { Lobby } from "./screens/Lobby";
 import { MainMenu } from "./screens/MainMenu";
@@ -54,14 +56,28 @@ function useUseKey() {
       if (panelOpen(s) || s.gameOver || s.game?.phase !== "playing" || !amAlive(s)) return;
       if (s.nearButton) socket.emit("meeting:call");
       else if (s.nearTerminal) socket.emit("terminal:open", { terminalId: s.nearTerminal });
-      else if (s.nearSpot) socket.emit("spot:examine", { spotId: s.nearSpot });
+      else if (s.nearSpot) startSearch(s.nearSpot);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 }
 
+/** Downloads every model and font first (screens/LoadingScreen.tsx), then fades into the game. */
 export function App() {
+  const [started, setStarted] = useState(false);
+  const [splash, setSplash] = useState(true);
+  const start = useCallback(() => setStarted(true), []);
+  const hideSplash = useCallback(() => setSplash(false), []);
+  return (
+    <>
+      {started && <Main />}
+      {splash && <LoadingScreen onReady={start} onDone={hideSplash} />}
+    </>
+  );
+}
+
+function Main() {
   const screen = useGame(currentScreen);
   const lobby = useGame((s) => s.lobby);
   const game = useGame((s) => s.game);
@@ -100,6 +116,7 @@ export function App() {
             {!isTouch && <div className="keys-hint">WASD to walk · E to use or examine</div>}
             {isTouch && <Joystick />}
             <ActionButton />
+            <SearchProgress />
           </div>
           <SpectatorBanner />
           <TerminalPanel />

@@ -1,53 +1,56 @@
 import { useFrame } from "@react-three/fiber";
+import { distance } from "@whtb/shared/geometry";
 import { HIDING_SPOTS, type HidingSpot } from "@whtb/shared/pieces";
+import { canSee } from "@whtb/shared/vision";
 import { useRef } from "react";
-import type { Group, Mesh, MeshBasicMaterial } from "three";
+import type { Mesh, MeshBasicMaterial } from "three";
 import { useGame } from "../net/store";
+import type { Body } from "./useMovement";
 
-/** A small floating diamond over something you can examine. */
-function SpotMarker({ spot, index }: { spot: HidingSpot; index: number }) {
-  const group = useRef<Group>(null);
-  const gem = useRef<Mesh>(null);
+/** Rings show only within this distance, so the school looks clean from afar. */
+const SHOW_WITHIN = 3.2;
+
+/** A soft ring on the floor in front of something you can examine. */
+function SpotRing({ spot, index, me }: { spot: HidingSpot; index: number; me: React.RefObject<Body> }) {
+  const ring = useRef<Mesh>(null);
 
   useFrame(({ clock }) => {
+    const r = ring.current;
+    if (!r) return;
+    const d = distance(me.current, spot);
+    // Close by, and not behind a wall (same vision rule as classmates).
+    r.visible = d < SHOW_WITHIN && canSee(me.current, spot);
+    if (!r.visible) return;
     const s = useGame.getState();
     const searched = s.searched.includes(spot.id);
     const near = s.nearSpot === spot.id;
-    const g = group.current;
-    if (!g) return;
-    const t = clock.elapsedTime;
-    g.position.y = 1.45 + Math.sin(t * 2.2 + index) * 0.07;
-    g.rotation.y = t * 1.2 + index;
-    // Bigger and brighter when you can examine it; small and grey once you've searched it.
-    const scale = near ? 1.35 : searched ? 0.6 : 1;
-    g.scale.setScalar(g.scale.x + (scale - g.scale.x) * 0.2);
-    const m = gem.current?.material as MeshBasicMaterial | undefined;
-    if (m) {
-      m.color.set(searched ? "#9a93ad" : "#ffd84d");
-      m.opacity = searched ? 0.45 : 0.95;
-    }
+    const m = r.material as MeshBasicMaterial;
+    // Fades in as you approach; pulses gently when you can examine it; grey once searched.
+    const fade = Math.min(1, (SHOW_WITHIN - d) / 1.2);
+    const pulse = near ? 0.75 + Math.sin(clock.elapsedTime * 4 + index) * 0.2 : 0.45;
+    m.color.set(searched ? "#9a93ad" : "#ffd84d");
+    m.opacity = fade * (searched ? 0.35 : pulse);
+    r.scale.setScalar(near ? 1.1 : 1);
   });
 
   return (
-    <group ref={group} position={[spot.x, 1.45, spot.z]}>
-      <mesh ref={gem}>
-        <octahedronGeometry args={[0.13, 0]} />
-        <meshBasicMaterial color="#ffd84d" transparent opacity={0.95} />
-      </mesh>
-    </group>
+    <mesh ref={ring} rotation-x={-Math.PI / 2} position={[spot.x, 0.025, spot.z]} visible={false}>
+      <ringGeometry args={[0.32, 0.44, 32]} />
+      <meshBasicMaterial color="#ffd84d" transparent opacity={0} depthWrite={false} />
+    </mesh>
   );
 }
 
 /**
  * Things you can examine for hidden question pieces (prd.md > Question Pieces):
- * desks, posters, shelves, the fridge… Each has a little marker; the markers say
- * where you can search, never whether a piece is there.
+ * desks, posters, shelves, the fridge… A ring shows on the floor in front of each
+ * one only when you're close; it says where you can search, never whether a piece is there.
  */
-export function Spots3D() {
+export function Spots3D({ me }: { me: React.RefObject<Body> }) {
   return (
     <>
       {HIDING_SPOTS.map((s, i) => (
-        <SpotMarker key={s.id} spot={s} index={i} />
+        <SpotRing key={s.id} spot={s} index={i} me={me} />
       ))}
     </>
   );

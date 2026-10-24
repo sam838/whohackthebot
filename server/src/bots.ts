@@ -12,6 +12,7 @@ import { distance, nearMeetingButton } from "@whtb/shared/geometry";
 import { MEETING_BUTTON, ROOMS, TERMINALS, roomAt, type Point } from "@whtb/shared/map";
 import { findPath, isWalkable } from "@whtb/shared/nav";
 import { HIDING_SPOTS } from "@whtb/shared/pieces";
+import { canSee } from "@whtb/shared/vision";
 import type { PlayerPosition } from "@whtb/shared/types";
 import type { MeetingRequest } from "./ai";
 import type { GameRoom } from "./game/GameRoom";
@@ -84,8 +85,10 @@ export class BotController {
   private random: () => number;
   private seenStrikes = 0;
   private lastPhase: string;
-  /** terminalId → playerId → last time seen nearby. */
-  private nearLog = new Map<string, Map<string, number>>();
+  /** What each bot saw: bot → terminal → classmate seen near it → when. */
+  private sightings = new Map<string, Map<string, Map<string, number>>>();
+  /** Where each bot last saw each classmate (bot → classmate → position). */
+  private lastSeen = new Map<string, Map<string, Point>>();
 
   constructor(private world: BotWorld) {
     this.now = world.now ?? Date.now;
@@ -131,14 +134,23 @@ export class BotController {
 
   // --- Watching: who stands near which terminal, and blame after a strike ---
 
+  /** Each bot notes who it can see standing near a terminal (limited vision, like players). */
   private watch(now: number) {
-    for (const id of this.game.aliveIds()) {
-      const pos = this.world.position(id);
-      if (!pos) continue;
-      for (const t of TERMINALS) {
-        if (distance(pos, t) > 2.5) continue;
-        if (!this.nearLog.has(t.id)) this.nearLog.set(t.id, new Map());
-        this.nearLog.get(t.id)!.set(id, now);
+    for (const bot of this.bots) {
+      const eyes = this.game.isAlive(bot.id) ? this.world.position(bot.id) : undefined;
+      if (!eyes) continue;
+      if (!this.sightings.has(bot.id)) this.sightings.set(bot.id, new Map());
+      if (!this.lastSeen.has(bot.id)) this.lastSeen.set(bot.id, new Map());
+      const log = this.sightings.get(bot.id)!;
+      for (const id of this.game.aliveIds()) {
+        const pos = id === bot.id ? undefined : this.world.position(id);
+        if (!pos || !canSee(eyes, pos)) continue;
+        this.lastSeen.get(bot.id)!.set(id, { x: pos.x, z: pos.z });
+        for (const t of TERMINALS) {
+          if (distance(pos, t) > 2.5) continue;
+          if (!log.has(t.id)) log.set(t.id, new Map());
+          log.get(t.id)!.set(id, now);
+        }
       }
     }
   }
@@ -147,8 +159,8 @@ export class BotController {
     const strikes = this.game.strikeTerminals;
     while (this.seenStrikes < strikes.length) {
       const terminalId = strikes[this.seenStrikes++];
-      const seen = this.nearLog.get(terminalId) ?? new Map<string, number>();
       for (const bot of this.bots) {
+        const seen = this.sightings.get(bot.id)?.get(terminalId) ?? new Map<string, number>();
         for (const [pid, at] of seen) {
           if (pid === bot.id || now - at > MEMORY_MS) continue;
           bot.suspicion.set(pid, (bot.suspicion.get(pid) ?? 0) + 1);
@@ -179,15 +191,13 @@ export class BotController {
 
   /**
    * Where a sharp Bluffer would hack: the not-yet-hacked terminal closest to where
-   * classmates are (only what a player can see: positions, not bags).
+   * it last saw its classmates (only what a player could know: no bags, no x-ray).
    */
   private terminalToHack(bot: Bot) {
     const game = this.game;
     const hacked = new Set(game.hackedTerminals());
-    const others = [...game.roles.keys()]
-      .filter((id) => id !== bot.id && game.isAlive(id))
-      .map((id) => this.world.position(id))
-      .filter((p): p is PlayerPosition => Boolean(p));
+    const seen = this.lastSeen.get(bot.id) ?? new Map<string, Point>();
+    const others = [...seen].filter(([id]) => game.isAlive(id)).map(([, p]) => p);
     const score = (t: Point) => others.reduce((sum, p) => sum + 1 / (1 + distance(p, t)), 0);
     const open = TERMINALS.filter((t) => !hacked.has(t.id));
     return [...(open.length ? open : TERMINALS)].sort((a, b) => score(b) - score(a))[0];

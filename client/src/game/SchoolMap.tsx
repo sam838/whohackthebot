@@ -34,6 +34,14 @@ function floorTexture(r: Room): Texture {
       return checkerFloor("#f4f6f8", "#d5dde3", repeat);
     case "canteen":
       return checkerFloor("#fff3e0", "#f7c59f", repeat);
+    case "gym":
+      return woodFloor(repeat);
+    case "server":
+      return checkerFloor("#9fb0c7", "#8697b0", repeat);
+    case "music":
+      return woodFloor(repeat, true);
+    case "art":
+      return checkerFloor("#f1f8e9", "#c8e6c9", repeat);
     default:
       return linoleumFloor([r.w / 4, 1]);
   }

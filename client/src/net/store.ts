@@ -77,6 +77,10 @@ interface GameStore {
   introAt: number | undefined;
   /** When you reopened your role book during play (undefined = closed). */
   bookOpenedAt: number | undefined;
+  /** The thing you're searching right now (a short pause before the result). */
+  searching: { spotId: string; startedAt: number } | undefined;
+  /** A piece you just found, highlighted in your bag for a moment. */
+  newPieceId: string | undefined;
   setMenuScreen: (s: MenuScreen) => void;
   clearError: () => void;
 }
@@ -100,6 +104,8 @@ const freshGame = {
   myVote: undefined,
   introAt: undefined,
   bookOpenedAt: undefined,
+  searching: undefined,
+  newPieceId: undefined,
 };
 
 export const useGame = create<GameStore>((set) => ({
@@ -139,9 +145,27 @@ export function closePanel() {
 }
 
 /** True while a terminal panel (arranging or answering) is open. */
-export function panelOpen(s: Pick<GameStore, "arrange" | "question" | "bookOpenedAt">): boolean {
-  return Boolean(s.arrange || s.question || s.bookOpenedAt !== undefined);
+export function panelOpen(s: Pick<GameStore, "arrange" | "question" | "bookOpenedAt" | "searching">): boolean {
+  return Boolean(s.arrange || s.question || s.bookOpenedAt !== undefined || s.searching);
 }
+
+/** How long searching something takes before you learn what's there. */
+export const SEARCH_MS = 1000;
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Examine a hiding spot: stand still for a moment while you search, then ask the server. */
+export function startSearch(spotId: string) {
+  if (useGame.getState().searching) return;
+  useGame.setState({ searching: { spotId, startedAt: performance.now() } });
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    socket.emit("spot:examine", { spotId });
+    // If no answer comes back (e.g. a meeting started), stop searching anyway.
+    searchTimer = setTimeout(() => useGame.setState({ searching: undefined }), 2000);
+  }, SEARCH_MS);
+}
+
+let newPieceTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** Read your role book again during play. */
 export function openBook() {
@@ -186,6 +210,11 @@ socket.on("game:respawn", ({ seats }) => {
 });
 socket.on("positions", applyPositions);
 socket.on("error", (error) => {
+  // A refused search (e.g. hands full) ends the search too.
+  if (useGame.getState().searching) {
+    clearTimeout(searchTimer);
+    useGame.setState({ searching: undefined });
+  }
   useGame.setState({ error });
   // In-game errors are short toasts; menu errors stay until the next action.
   if (useGame.getState().game) {
@@ -198,8 +227,17 @@ socket.on("game:role", ({ role }) => useGame.setState({ role }));
 socket.on("game:bag", ({ pieces }) => useGame.setState({ bag: pieces }));
 socket.on("spot:result", ({ spotId, piece }) => {
   const where = HIDING_SPOTS.find((s) => s.id === spotId)?.label ?? "here";
-  useGame.setState((s) => ({ searched: s.searched.includes(spotId) ? s.searched : [...s.searched, spotId] }));
-  showNotice(piece ? `Found “${piece.text}” ${where}!` : "Nothing here.");
+  clearTimeout(searchTimer);
+  useGame.setState((s) => ({
+    searching: undefined,
+    searched: s.searched.includes(spotId) ? s.searched : [...s.searched, spotId],
+    newPieceId: piece?.id ?? s.newPieceId,
+  }));
+  showNotice(piece ? `Found “${piece.text}” ${where}! Added to your bag.` : "Nothing here.");
+  if (piece) {
+    clearTimeout(newPieceTimer);
+    newPieceTimer = setTimeout(() => useGame.setState({ newPieceId: undefined }), 3000);
+  }
 });
 socket.on("terminal:arrange", ({ terminalId, cards, msLeft }) =>
   useGame.setState({ arrange: { terminalId, cards, endsAt: performance.now() + msLeft, totalMs: msLeft, wrongCount: 0 } }),

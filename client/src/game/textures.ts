@@ -159,6 +159,28 @@ export function poster(kind: "think" | "periodic" | "goggles" | "menu" | "map" |
   });
 }
 
+/** A player's name tag: their name in white on a pill of their color. */
+export function nameTag(name: string, color: string) {
+  return make(`tag-${color}-${name}`, 384, 96, (c, w, h) => {
+    c.font = `800 56px ${FONT}`;
+    const textW = Math.min(w - 24, c.measureText(name).width + 48);
+    const x = (w - textW) / 2;
+    c.fillStyle = "#2b2440";
+    rounded(c, x - 4, 6, textW + 8, h - 12, (h - 12) / 2);
+    c.fill();
+    c.fillStyle = color;
+    rounded(c, x, 10, textW, h - 20, (h - 20) / 2);
+    c.fill();
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.lineWidth = 8;
+    c.strokeStyle = "#2b2440";
+    c.strokeText(name, w / 2, h / 2 + 3, textW - 24);
+    c.fillStyle = "#ffffff";
+    c.fillText(name, w / 2, h / 2 + 3, textW - 24);
+  });
+}
+
 export function sign(text: string) {
   return make(`sign-${text}`, 512, 112, (c, w, h) => {
     c.fillStyle = "#2b2440";

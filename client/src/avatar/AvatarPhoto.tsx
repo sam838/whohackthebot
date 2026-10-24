@@ -38,11 +38,11 @@ export interface Pose {
 /** Each role poses differently for its book photo (learner's idea). */
 export const ROLE_POSES: Record<Role, Pose> = {
   // Hand up by the face, head tilted, smiling.
-  student: { bones: { "arm-right": [0, -0.25, -1.05], "arm-left": [0, 0, -1.3], head: [0, 0, 0.18] } },
+  student: { bones: { "arm-right": [0, -0.25, -1.05], "arm-left": [0, 0, -1.12], head: [0, 0, 0.18] } },
   // A plain, friendly photo.
-  factChecker: { bones: { "arm-right": [0, 0, 1.3], "arm-left": [0, 0, -1.3], head: [0, 0.15, -0.1] } },
-  // Impostor: bandit mask, a shifty side-glance, and both hands hidden behind the back.
-  bluffer: { bones: { "arm-right": [0, 0.6, 1.25], "arm-left": [0, -0.6, -1.25], head: [0, -0.5, 0], torso: [0, 0.15, 0] }, prop: "mask" },
+  factChecker: { bones: { "arm-right": [0, 0, 1.12], "arm-left": [0, 0, -1.12], head: [0, 0.15, -0.1] } },
+  // Impostor: bandit mask and a shifty side-glance, arms at the sides (hands behind the back read as squatting).
+  bluffer: { bones: { "arm-right": [0, 0, 1.12], "arm-left": [0, 0, -1.12], head: [0, -0.5, 0] }, prop: "mask" },
 };
 
 const ink = new MeshStandardMaterial({ color: "#2b2440", roughness: 0.6 });
