@@ -86,6 +86,8 @@ export function createApp(options: { ai?: AiService; revealMs?: number; clientDi
             const log = chatLog.get(room.code) ?? [];
             log.push(`${room.players.get(m.fromId)?.name ?? "someone"}: ${m.text}`);
             chatLog.set(room.code, log.slice(-6));
+            // Practice bots listen to you and may answer.
+            bots.get(room.code)?.hear(m.fromId, m.text);
           }
           if (event === "vote:result") chatLog.delete(room.code);
           (io.to(room.code).emit as (e: string, p: unknown) => boolean)(event, payload);
@@ -139,6 +141,7 @@ export function createApp(options: { ai?: AiService; revealMs?: number; clientDi
           },
           nameOf: (id) => room.players.get(id)?.name ?? "someone",
           speak: ai.active ? (req) => ai.meetingLine(room.code, { ...req, recentChat: chatLog.get(room.code) ?? [] }) : undefined,
+          reply: ai.active ? (req) => ai.botReply(room.code, { ...req, recentChat: chatLog.get(room.code) ?? [] }) : undefined,
         }),
       );
     }

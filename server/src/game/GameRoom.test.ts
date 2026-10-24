@@ -694,3 +694,16 @@ describe("expel", () => {
     expect(game.gameOver()?.winner).toBe("bluffer");
   });
 });
+
+describe("game over", () => {
+  it("lists everyone, says when the Bluffer left, and marks who left", () => {
+    const { game, byRole } = setup();
+    const b = byRole("bluffer")[0];
+    game.removePlayer(b);
+    const over = game.gameOver()!;
+    expect(over.winner).toBe("class");
+    expect(over.reason).toBe("The Bluffer left the game.");
+    expect(Object.keys(over.roles)).toHaveLength(4);
+    expect(over.out[b]).toBe("left");
+  });
+});

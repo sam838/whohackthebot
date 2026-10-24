@@ -1,5 +1,6 @@
 import { STRIKES_TO_LOSE } from "@whtb/shared/constants";
 import { useGame } from "../net/store";
+import { LeaveButton } from "./LeaveButton";
 import { Minimap } from "./Minimap";
 
 /** Strikes and class progress, always visible to everyone (prd.md > Moving Around the School). */
@@ -28,6 +29,7 @@ export function StrikeBar() {
         </span>
       </div>
       <Minimap />
+      <LeaveButton />
     </div>
   );
 }

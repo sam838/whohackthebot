@@ -56,6 +56,31 @@ describe("AiService", () => {
     expect(await new AiService({}, fake("error").create).studyBotLine("ROOM", question)).toBeUndefined();
   });
 
+  it("asks for a reply plus a plan as JSON, and keeps only plans from the list", async () => {
+    const req = {
+      botName: "Kevin",
+      isBluffer: false,
+      room: "the Library",
+      suspects: [],
+      others: ["Rina", "Sam"],
+      speaker: "Sam",
+      message: "Kevin, meet me in the Gym",
+      addressed: true,
+      trustOfSpeaker: "not at all" as const,
+      rooms: ["Gym", "Library"],
+      recentChat: [],
+    };
+    const f = fake(JSON.stringify({ say: "Sure, see you in the Gym!", plan: { kind: "meet", target: "Gym" } }));
+    const ai = new AiService({}, f.create);
+    expect(await ai.botReply("ROOM", req)).toEqual({ say: "Sure, see you in the Gym!", plan: { kind: "meet", target: "Gym" } });
+    expect(f.calls[0].output_config?.format?.type).toBe("json_schema");
+    expect(JSON.stringify(f.calls[0].messages)).toContain("Sam just said to you: Kevin, meet me in the Gym");
+
+    const odd = fake(JSON.stringify({ say: "ok", plan: { kind: "dance", target: "" } }));
+    expect((await new AiService({}, odd.create).botReply("ROOM", req))?.plan.kind).toBe("none");
+    expect(await new AiService({}, fake("not json").create).botReply("ROOM", req)).toBeUndefined();
+  });
+
   it("stops calling after the per-game limit", async () => {
     const f = fake("Trust me!");
     const ai = new AiService({}, f.create);

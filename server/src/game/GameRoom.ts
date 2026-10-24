@@ -467,6 +467,11 @@ export class GameRoom {
     return this.bagOf(playerId).map((p) => p.id);
   }
 
+  /** What the pieces in someone's bag say (practice bots can tell you in a meeting). */
+  bagTexts(playerId: string): string[] {
+    return this.bagOf(playerId).map((p) => p.text);
+  }
+
   /** A class question whose 3 pieces are all among these ids, if any. */
   fullQuestionIn(ids: string[]): Question | undefined {
     return this.questions.find((q) => !this.solved.has(q.id) && this.pieceIdsOf(q).every((id) => ids.includes(id)));
@@ -730,6 +735,8 @@ export class GameRoom {
       why: q.hint,
       solved: this.solved.has(q.id),
     }));
-    return { ...this.result, roles: Object.fromEntries(this.roles), myths };
+    // "Kicked out of school" isn't right if the Bluffer simply left.
+    const reason = this.result.winner === "class" && this.outReason.get(this.blufferId()) === "left" ? "The Bluffer left the game." : this.result.reason;
+    return { ...this.result, reason, roles: Object.fromEntries(this.roles), out: Object.fromEntries(this.outReason), myths };
   }
 }

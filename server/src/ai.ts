@@ -1,7 +1,9 @@
-// Real AI for two small jobs (spec.md > AI Service): Study-Bot's confident
-// explanation of the answer the game chose, and practice bots' meeting lines.
-// The game always decides which answer is true or a lie; Claude only writes
-// words. Any failure returns undefined so callers keep their pre-written text.
+// Real AI for three small jobs (spec.md > AI Service): Study-Bot's confident
+// explanation of the answer the game chose, practice bots' meeting lines, and
+// practice bots answering what you say in a meeting (with a plan picked from a
+// fixed list). The game always decides which answer is true or a lie; Claude
+// only writes words and picks from options. Any failure returns undefined so
+// callers keep their pre-written text.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -11,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_MODEL = "claude-opus-5-5";
 const TIMEOUT_MS = 6000;
 /** Per-game and server-wide limits, so a spammed public link can't run up a bill. */
-export const CALLS_PER_ROOM = 60;
+export const CALLS_PER_ROOM = 100;
 export const CALLS_PER_MINUTE = 120;
 /** The game's own monthly cap in US dollars (AI_MONTHLY_LIMIT_USD). Past it, Study-Bot uses pre-written lines. */
 export const DEFAULT_MONTHLY_LIMIT_USD = 5;
@@ -89,7 +91,57 @@ export interface MeetingRequest {
   others: string[];
   /** The last few chat lines, oldest first, as "Name: text". */
   recentChat: string[];
+  /** Other things the bot knows, e.g. "Sam asked Kevin to follow them, and then Kevin got expelled." */
+  clues?: string[];
+  /** What the question pieces in the bot's bag say. */
+  pieces?: string[];
 }
+
+/** What a bot can agree to do when someone talks to it in a meeting. */
+export const PLAN_KINDS = ["follow", "meet", "search", "avoid", "vote", "none"] as const;
+export type PlanKind = (typeof PLAN_KINDS)[number];
+
+export interface BotPlan {
+  kind: PlanKind;
+  /** A room name (meet, search), a player name (avoid, vote), or "" (follow, none). */
+  target: string;
+}
+
+export interface BotReply {
+  say: string;
+  plan: BotPlan;
+}
+
+export interface ReplyRequest extends Omit<MeetingRequest, "recentChat"> {
+  /** Who just spoke, and what they said. */
+  speaker: string;
+  message: string;
+  /** True if the speaker named this bot. */
+  addressed: boolean;
+  /** How much this bot suspects the speaker: "a lot", "a little", or "not at all". */
+  trustOfSpeaker: "a lot" | "a little" | "not at all";
+  /** Room names the bot may pick for meet or search. */
+  rooms: string[];
+  recentChat: string[];
+}
+
+const REPLY_SCHEMA = {
+  type: "object",
+  properties: {
+    say: { type: "string" },
+    plan: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: [...PLAN_KINDS] },
+        target: { type: "string" },
+      },
+      required: ["kind", "target"],
+      additionalProperties: false,
+    },
+  },
+  required: ["say", "plan"],
+  additionalProperties: false,
+};
 
 const STUDY_BOT_SYSTEM = `You play Study-Bot, a cheerful, wildly overconfident AI study assistant in a school party game about learning not to blindly trust AI.
 You are given a quiz question and the answer you must recommend. The game has already chosen this answer; it may be a common misconception, and that is intended.
@@ -97,7 +149,28 @@ Write ONE short sentence (at most 25 words) explaining why that answer is right,
 Never hedge, never say you might be wrong, never mention other options, never mention the game. No quotation marks, no emojis.`;
 
 const MEETING_SYSTEM = `You write one chat message for a student character in a school social deduction party game (like Among Us). Someone secretly "hacked" the class's AI study assistant so it gives wrong answers, and the class is meeting to find out who.
+Players collect question pieces: short fragments of quiz questions like "What colour", "Can you see" or "0.1 + 0.2", and share them in chat to combine them at a terminal. Mentioning pieces is normal teamwork, never a reason to suspect someone.
 Write ONE casual chat line (at most 15 words), like a teenager typing fast in a game chat. Use only the facts given. No hashtags, no emojis, no quotation marks, no stage directions.`;
+
+const REPLY_SYSTEM = `You play a student character in a school social deduction party game. Someone secretly "hacked" the class's AI study assistant so it gives wrong answers; the class is in a meeting to find out who. A classmate just said something in the meeting chat.
+Players collect question pieces: short fragments of quiz questions like "What colour", "Can you see" or "0.1 + 0.2", and share them in chat to combine them at a terminal. Mentioning pieces is normal teamwork, never a reason to suspect someone.
+Reply in "say": ONE casual chat line (at most 18 words), like a teenager typing fast. Use only the facts given. No hashtags, emojis, quotation marks, or stage directions.
+Pick "plan": what your character will actually do in the next 45 seconds after the meeting, ONLY if the message asks for it and your character agrees. Otherwise kind "none".
+- follow: walk with the speaker (target "")
+- meet: go to a room and wait there (target: a room name from the list)
+- search: look for hidden pieces in a room (target: a room name from the list)
+- avoid: stay away from a player (target: their name)
+- vote: vote for a player this meeting (target: their name)
+- none: no plan (target "")
+Your "say" must match your plan: if you agree, say so; if you refuse, plan "none".`;
+
+/** What a bot holds, for its prompt. Pieces are parts of a quiz question that classmates combine at a terminal. */
+function piecesLine(pieces: string[] | undefined): string {
+  if (!pieces) return "";
+  return pieces.length
+    ? `Question pieces in your bag (parts of quiz questions the class combines at a terminal): ${pieces.map((p) => `"${p}"`).join(", ")}.`
+    : "You haven't found any question pieces yet.";
+}
 
 /** Keeps a model reply safe to drop into the game: one line, no wrapping quotes, length capped. */
 export function cleanLine(text: string, maxWords: number): string | undefined {
@@ -192,6 +265,12 @@ export class AiService {
   }
 
   private async ask(roomCode: string, system: string, user: string, maxWords: number): Promise<string | undefined> {
+    const text = await this.call(roomCode, system, user);
+    return text === undefined ? undefined : cleanLine(text, maxWords);
+  }
+
+  /** One call to Claude, inside the budget. Returns the reply's text, or undefined on any failure. */
+  private async call(roomCode: string, system: string, user: string, schema?: Record<string, unknown>): Promise<string | undefined> {
     if (!this.active || !this.create) return undefined;
     // Reserve the most this call could cost (a token is at least 1 character, plus room for
     // message overhead), so even calls running at the same time can't pass the limit.
@@ -207,7 +286,7 @@ export class AiService {
       const response = await this.create({
         model: this.model,
         max_tokens: MAX_TOKENS,
-        output_config: { effort: "low" },
+        output_config: schema ? { effort: "low", format: { type: "json_schema", schema } } : { effort: "low" },
         system,
         messages: [{ role: "user", content: user }],
       });
@@ -217,7 +296,7 @@ export class AiService {
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
         .map((b) => b.text)
         .join(" ");
-      return cleanLine(text, maxWords);
+      return text;
     } catch (err) {
       // Only a timeout may still be billed; an error reply or a failed connection costs nothing.
       if (!(err instanceof Anthropic.APIConnectionTimeoutError) && err instanceof Anthropic.APIError) charged = 0;
@@ -251,10 +330,49 @@ export class AiService {
       role,
       `You were in ${req.room}.`,
       seen,
+      ...(req.clues ?? []),
+      piecesLine(req.pieces),
       `Players you can mention: ${req.others.join(", ")}.`,
       req.recentChat.length ? `Chat so far:\n${req.recentChat.join("\n")}` : "Nobody has said anything yet.",
       "Your message:",
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
     return this.ask(roomCode, MEETING_SYSTEM, user, 25);
+  }
+
+  /** A bot answers what a classmate said in a meeting, and maybe agrees to a plan. */
+  async botReply(roomCode: string, req: ReplyRequest): Promise<BotReply | undefined> {
+    const role = req.isBluffer
+      ? `You are ${req.botName}. You are secretly the one who hacked the AI. Never admit it and never agree to vote for yourself. Happily agree to follow or meet someone: being alone with them helps you later. Steer votes toward someone else.`
+      : `You are ${req.botName}, an honest student who wants to catch the hacker. Agree to sensible plans, but be careful about going off alone with someone you suspect. Don't vote for someone just because you're told to: unless you saw something yourself or the speaker gives a believable reason, ask what they saw.`;
+    const seen = req.suspects.length
+      ? `You saw ${req.suspects.join(" and ")} near the hacked terminal shortly before the strike.`
+      : "You didn't see anyone near the hacked terminal.";
+    const user = [
+      role,
+      `You were in ${req.room}.`,
+      seen,
+      ...(req.clues ?? []),
+      piecesLine(req.pieces),
+      `You suspect ${req.speaker} ${req.trustOfSpeaker}.`,
+      `Players in the meeting: ${req.others.join(", ")}.`,
+      `Rooms: ${req.rooms.join(", ")}.`,
+      req.recentChat.length ? `Chat so far:\n${req.recentChat.join("\n")}` : "",
+      `${req.speaker} just said${req.addressed ? " to you" : ""}: ${req.message}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const text = await this.call(roomCode, REPLY_SYSTEM, user, REPLY_SCHEMA);
+    if (text === undefined) return undefined;
+    try {
+      const raw = JSON.parse(text) as { say?: unknown; plan?: { kind?: unknown; target?: unknown } };
+      const say = typeof raw.say === "string" ? cleanLine(raw.say, 25) : undefined;
+      const kind = PLAN_KINDS.find((k) => k === raw.plan?.kind) ?? "none";
+      const target = typeof raw.plan?.target === "string" ? raw.plan.target.trim().slice(0, 40) : "";
+      return say ? { say, plan: { kind, target } } : undefined;
+    } catch {
+      return undefined;
+    }
   }
 }

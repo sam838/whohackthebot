@@ -4,7 +4,7 @@ import { leaveRoom, useGame } from "../net/store";
 /** Who won, why, and every secret role revealed (prd.md > Win and Game Over). */
 export function GameOver() {
   const over = useGame((s) => s.gameOver);
-  const players = useGame((s) => s.game?.players ?? []);
+  const roster = useGame((s) => s.roster);
   const myId = useGame((s) => s.myId);
   const myRole = useGame((s) => s.role);
   if (!over) return null;
@@ -19,14 +19,15 @@ export function GameOver() {
         <h2 className="title">{classWon ? "Class wins!" : "Bluffer wins!"}</h2>
         <p className="reason">{over.reason}</p>
         <ul className="players">
-          {players.map((p) => {
-            const role = over.roles[p.id];
+          {Object.entries(over.roles).map(([id, role]) => {
+            const p = roster[id] ?? { name: "Someone", color: "#9a93ad" };
             return (
-              <li key={p.id} className={role === "bluffer" ? "is-bluffer" : ""}>
+              <li key={id} className={role === "bluffer" ? "is-bluffer" : ""}>
                 <span className="dot" style={{ background: p.color }} />
                 {p.name}
-                {p.id === myId && <span className="tag">you</span>}
-                <span className={`role-tag role-${role}`}>{role ? ROLE_NAMES[role] : "left"}</span>
+                {id === myId && <span className="tag">you</span>}
+                {over.out[id] === "left" && <span className="tag left">left</span>}
+                <span className={`role-tag role-${role}`}>{ROLE_NAMES[role]}</span>
               </li>
             );
           })}

@@ -205,7 +205,12 @@ const BUBBLE_POP_MS = 420;
  * Lets a screen send Study-Bot down before it moves on (the title does this when
  * you press anything), so the exit plays while the next screen loads.
  */
-export const wallpaperCue = { exitAt: -Infinity };
+export const wallpaperCue = { exitAt: -Infinity, introAt: -Infinity };
+
+/** The loading splash is fading out: Study-Bot makes its entrance now (it was hidden behind the splash). */
+export function startWallpaperIntro() {
+  wallpaperCue.introAt = performance.now();
+}
 export function sendBotDown() {
   wallpaperCue.exitAt = performance.now();
 }
@@ -258,6 +263,7 @@ export function TitleBackground({ line1 = "I'm always right!", line2 = "…proba
       const s = wide ? Math.min(w / 1600, h / 900) : Math.min(w / 900, h / 1950);
       const lowestBubbleTop = wide ? 16 * s : h * 0.56;
       const L = live.current;
+      if (wallpaperCue.introAt > L.enterAt) L.enterAt = wallpaperCue.introAt;
       const showBot = wide || L.botOnNarrow;
       const botX = wide ? w * 0.7 : w * 0.5;
       const botBase = wide ? h * 0.93 : h * 0.95;

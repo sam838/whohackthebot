@@ -29,6 +29,8 @@ export function Meeting() {
   const caller = game.meetingCallerId ? nameOf(game.meetingCallerId) : undefined;
   const voted = new Set(game.votedIds);
   const canVote = alive && myVote === undefined;
+  // In practice, suggest talking to a bot by name.
+  const someBot = game.practice ? game.players.find((p) => p.id !== myId && p.alive)?.name.replace(/\s*\(bot\)$/, "") : undefined;
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
@@ -58,7 +60,15 @@ export function Meeting() {
 
         <div className="chat-log" ref={logRef} aria-live="polite">
           {chat.length === 0 ? (
-            <p className="chat-empty">Who hacked Study-Bot? Share what you saw, where you were, and which pieces you found.</p>
+            <p className="chat-empty">
+              Who hacked Study-Bot? Share what you saw, where you were, and which pieces you found.
+              {someBot && (
+                <>
+                  {" "}
+                  The bots read the chat: try “{someBot}, follow me”, “meet me in the Gym”, or “vote …”.
+                </>
+              )}
+            </p>
           ) : (
             chat.map((m, i) => {
               const p = nameOf(m.fromId);
@@ -84,7 +94,7 @@ export function Meeting() {
               id="chat-input"
               value={text}
               maxLength={CHAT_MAX_LENGTH}
-              placeholder="I was in the Library when…"
+              placeholder={someBot ? `${someBot}, follow me after this` : "I was in the Library when…"}
               autoComplete="off"
               onChange={(e) => setText(e.target.value)}
             />

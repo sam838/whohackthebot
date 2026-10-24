@@ -215,6 +215,7 @@ export function gameState(room: Room): GameStatePublic {
     votedIds: g?.votedIds() ?? [],
     readyIds: g?.readyIds() ?? [],
     meetingCallsLeft: g?.meetingCallsLeft() ?? {},
+    practice: room.practice,
   };
 }
 

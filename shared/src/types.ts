@@ -52,6 +52,8 @@ export interface GameStatePublic {
   readyIds: string[];
   /** Meetings each player can still call. */
   meetingCallsLeft: Record<string, number>;
+  /** A practice game (you and bots): the bots read the meeting chat. */
+  practice?: boolean;
 }
 
 export interface VoteResult {
@@ -111,7 +113,10 @@ export interface MythBusted {
 export interface GameOver {
   winner: Winner;
   reason: string;
+  /** Everyone who played, including anyone who left (Game Over lists them all). */
   roles: Record<string, Role>;
+  /** Why each player was out at the end, if they were. */
+  out: Record<string, NonNullable<PublicPlayer["out"]>>;
   myths: MythBusted[];
 }
 

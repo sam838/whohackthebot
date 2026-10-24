@@ -3,6 +3,16 @@ import { useRef } from "react";
 import type { Group } from "three";
 import { Player } from "../game/Player";
 import type { Body } from "../game/useMovement";
+import { menuPaint } from "../screens/LoadingScreen";
+
+/** Tells the loading screen once the avatar is really on screen (a couple of frames drawn). */
+function FirstFrames() {
+  const frames = useRef(0);
+  useFrame(() => {
+    if (++frames.current === 3) menuPaint.done = true;
+  });
+  return null;
+}
 
 function Turntable({ color, character }: { color: string; character: string }) {
   const spin = useRef<Group>(null);
@@ -26,6 +36,7 @@ export function AvatarPreview({ color, character }: { color: string; character: 
         <hemisphereLight args={["#ffffff", "#b9a7c9", 1.8]} />
         <directionalLight position={[3, 5, 4]} intensity={1.4} />
         <Turntable color={color} character={character} />
+        <FirstFrames />
       </Canvas>
     </div>
   );

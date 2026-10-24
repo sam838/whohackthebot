@@ -85,6 +85,8 @@ interface GameStore {
   searching: { spotId: string; startedAt: number } | undefined;
   /** A piece you just found, highlighted in your bag for a moment. */
   newPieceId: string | undefined;
+  /** Everyone seen in this game (names and colors stay known even after someone leaves). */
+  roster: Record<string, { name: string; color: string }>;
   setMenuScreen: (s: MenuScreen) => void;
   clearError: () => void;
 }
@@ -112,6 +114,7 @@ const freshGame = {
   bookOpenedAt: undefined,
   searching: undefined,
   newPieceId: undefined,
+  roster: {},
 };
 
 export const useGame = create<GameStore>((set) => ({
@@ -199,6 +202,9 @@ socket.on("disconnect", () =>
 socket.on("lobby:state", (lobby) => useGame.setState({ lobby, game: undefined, error: undefined, ...freshGame }));
 socket.on("game:state", (game) => {
   const before = useGame.getState().game?.phase;
+  const roster = { ...useGame.getState().roster };
+  for (const p of game.players) roster[p.id] = { name: p.name, color: p.color };
+  useGame.setState({ roster });
   // A brand-new game: play the school-bell intro (screens/GameIntro.tsx).
   if (!useGame.getState().game) useGame.setState({ introAt: performance.now() });
   if (game.phase === "meeting" && before !== "meeting") {
