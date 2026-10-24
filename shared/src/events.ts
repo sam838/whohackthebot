@@ -55,6 +55,8 @@ export interface ServerToClientEvents {
   "terminal:arrangeWrong": () => void;
   "terminal:question": (q: TerminalQuestion) => void;
   "terminal:hint": (p: { hint: string; msLeft: number }) => void;
+  /** Study-Bot's explanation, written by Claude, for the question you have open. */
+  "terminal:botSays": (p: { terminalId: string; text: string | null }) => void;
   "terminal:verifyResult": (p: { botIsRight: boolean }) => void;
   "terminal:result": (p: { outcome: AnswerOutcome }) => void;
   "terminal:hacked": (p: { terminalId: string; cooldownMs: number }) => void;

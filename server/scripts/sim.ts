@@ -4,6 +4,7 @@
 import type { ClientToServerEvents, ServerToClientEvents } from "@whtb/shared/events";
 import type { AddressInfo } from "node:net";
 import { io as connect, type Socket } from "socket.io-client";
+import { AiService } from "../src/ai";
 import { createApp } from "../src/app";
 
 type Client = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -27,7 +28,8 @@ function check(ok: boolean, label: string) {
 }
 
 async function main() {
-  const { httpServer, io } = createApp();
+  // Never call the real API from the simulation, even if a key is set on this machine.
+  const { httpServer, io } = createApp({ ai: new AiService({}) });
   await new Promise<void>((r) => httpServer.listen(0, r));
   const url = `http://localhost:${(httpServer.address() as AddressInfo).port}`;
   const clients: Client[] = [];

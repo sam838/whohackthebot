@@ -7,7 +7,7 @@ import { assignRoles } from "./game/rules";
 import { RoomManager } from "./rooms";
 
 /** A practice game with a fake clock: one human (standing still) and 3 bots. */
-function practice(humanRole: Role) {
+function practice(humanRole: Role, speak?: (req: unknown) => Promise<string | undefined>) {
   const ids = ["human", "bot-0", "bot-1", "bot-2"];
   let clock = 1_000_000;
   const seed = { s: 42 };
@@ -39,6 +39,7 @@ function practice(humanRole: Role) {
     nameOf: (id) => id,
     now: () => clock,
     random,
+    speak: speak as never,
   });
   const run = (seconds: number) => {
     for (let i = 0; i < seconds * 12; i++) {
@@ -101,5 +102,19 @@ describe("practice bots", () => {
     run(30);
     expect(roomEvents.some((e) => e.event === "chat:message")).toBe(true);
     expect(roomEvents.some((e) => e.event === "vote:result")).toBe(true);
+  });
+
+  it("bots say their AI-written line in a meeting, or the canned line when the AI gives nothing", async () => {
+    for (const reply of ["AI says: I saw Rina near the Lab!", undefined]) {
+      const { game, positions, run, roomEvents } = practice("student", async () => reply);
+      positions.set("human", { x: MEETING_BUTTON.x, z: MEETING_BUTTON.z + 1, heading: 0 });
+      game.callMeeting("human");
+      run(10);
+      await new Promise((r) => setTimeout(r, 0)); // let the bots' replies resolve
+      const lines = roomEvents.filter((e) => e.event === "chat:message").map((e) => e.payload.text);
+      expect(lines.length).toBeGreaterThan(0);
+      if (reply) expect(lines.every((l) => l === reply)).toBe(true);
+      else expect(lines.some((l) => l.startsWith("AI says"))).toBe(false);
+    }
   });
 });

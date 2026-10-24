@@ -12,6 +12,7 @@ import { MEETING_BUTTON, ROOMS, TERMINALS, roomAt, type Point } from "@whtb/shar
 import { findPath, isWalkable } from "@whtb/shared/nav";
 import { PICKUP_RADIUS } from "@whtb/shared/pieces";
 import type { PlayerPosition } from "@whtb/shared/types";
+import type { MeetingRequest } from "./ai";
 import type { GameRoom } from "./game/GameRoom";
 import { ActionError } from "./game/GameRoom";
 
@@ -48,6 +49,8 @@ export interface BotWorld {
   position(id: string): PlayerPosition | undefined;
   move(id: string, pos: PlayerPosition): void;
   nameOf(id: string): string;
+  /** Optional AI voice for meeting lines; resolves to undefined to use the canned line. */
+  speak?: (req: Omit<MeetingRequest, "recentChat">) => Promise<string | undefined>;
   now?: () => number;
   random?: () => number;
 }
@@ -359,6 +362,24 @@ export class BotController {
     return best;
   }
 
+  /** What a bot knows going into a meeting, for its AI-written line. */
+  private meetingFacts(bot: Bot): Omit<MeetingRequest, "recentChat"> {
+    const pos = this.world.position(bot.id);
+    const room = pos ? roomAt(pos)?.name ?? "the hallway" : "the hallway";
+    const suspects = [...bot.suspicion]
+      .filter(([pid, n]) => n > 0 && pid !== bot.id && this.game.isAlive(pid))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([pid]) => this.world.nameOf(pid));
+    return {
+      botName: this.world.nameOf(bot.id),
+      isBluffer: this.game.roles.get(bot.id) === "bluffer",
+      room: room === "the hallway" ? room : `the ${room}`,
+      suspects,
+      others: this.game.aliveIds().filter((id) => id !== bot.id).map((id) => this.world.nameOf(id)),
+    };
+  }
+
   private chatLine(bot: Bot): string {
     const pos = this.world.position(bot.id);
     const here = pos ? roomAt(pos)?.name ?? "the hallway" : "the hallway";
@@ -380,7 +401,13 @@ export class BotController {
       if (!this.game.isAlive(bot.id)) continue;
       if (bot.chatAt !== undefined && now >= bot.chatAt) {
         bot.chatAt = undefined;
-        this.try(() => this.game.chat(bot.id, this.chatLine(bot)));
+        const canned = this.chatLine(bot);
+        if (!this.world.speak) this.try(() => this.game.chat(bot.id, canned));
+        else {
+          void this.world.speak(this.meetingFacts(bot)).then((line) => {
+            if (this.game.phase === "meeting" && this.game.isAlive(bot.id)) this.try(() => this.game.chat(bot.id, line ?? canned));
+          });
+        }
       }
       if (bot.voteAt !== undefined && now >= bot.voteAt && !this.game.hasVoted(bot.id)) {
         bot.voteAt = undefined;

@@ -24,6 +24,8 @@ export interface OpenQuestion extends TerminalQuestion {
   totalMs: number;
   hint?: string;
   verified?: boolean;
+  /** Study-Bot's explanation, written by Claude (see terminal:botSays). */
+  botLine?: string;
   outcome?: AnswerOutcome;
 }
 
@@ -193,6 +195,10 @@ socket.on("terminal:question", (q) => {
 socket.on("terminal:hint", ({ hint, msLeft }) => {
   const q = useGame.getState().question;
   if (q) useGame.setState({ question: { ...q, hint, endsAt: performance.now() + msLeft } });
+});
+socket.on("terminal:botSays", ({ terminalId, text }) => {
+  const q = useGame.getState().question;
+  if (q && q.terminalId === terminalId) useGame.setState({ question: { ...q, botTyping: false, botLine: text ?? undefined } });
 });
 socket.on("terminal:verifyResult", ({ botIsRight }) => {
   const q = useGame.getState().question;

@@ -170,6 +170,16 @@ PRD ref: `prd.md > Practice Mode`. Added during `5-build` (slice 5c).
 - `server/src/bots.ts`: one `BotController` per practice room, ticked with the game loop. Each bot wanders to pieces, picks them up, walks to the human's terminal to help pool, solves full questions (trusting Study-Bot about 70% of the time), hacks if it is the Bluffer, may call a meeting after a strike, and in meetings chats canned lines and votes for whoever was seen near a hacked terminal. Bots act through the same `GameRoom` methods as players, so the rules can't be bent.
 - Bots are server-side players with no socket. A practice room is deleted when its human leaves.
 
+### AI Service (server)
+PRD ref: `prd.md > Real AI: Study-Bot Talks and Bots Argue`. Added during `5-build` (slice 5d).
+- `server/src/ai.ts`: wraps the Anthropic TypeScript SDK (`@anthropic-ai/sdk` 0.133.0). Enabled only when `ANTHROPIC_API_KEY` is set and `AI_DISABLED` isn't. Model from `CLAUDE_MODEL` (default `claude-opus-5-5`), effort `low`, short outputs, a 6-second timeout, no retries.
+- `studyBotLine(question, choices, pick)`: one confident sentence (≤ 25 words) defending the given pick. It never decides the answer and never hedges.
+- `botMeetingLine(context)`: one casual chat line (≤ 20 words) from a bot's real observations; the Bluffer bot is told to deflect and lie.
+- Guards: per-room cap (60 calls per game), a global per-minute cap, output trimmed and cleaned, `refusal` or any error returns `undefined` → callers use the pre-written text.
+- Monthly budget: `AI_MONTHLY_LIMIT_USD` (default $5). Each call's cost is worked out from the reply's token counts and the model's price and saved to a git-ignored `.ai-spend.json`, so the total survives restarts. Before a call, its worst-case cost is reserved; if that would pass the limit, the call is skipped and the game uses its pre-written lines until next month (UTC). A billing, auth, or spend-limit error from Anthropic also switches the AI off until the server restarts. The Console spend limit is the backstop (Render's disk resets on each deploy).
+- Wiring: after a `terminal:question`, `app.ts` asks for the explanation and sends a private `terminal:botSays` if the question is still open; `BotController` gets an optional async `speak` hook for meeting lines.
+- `.env` (git-ignored) is loaded at server start; Render gets the same variables in its dashboard. The key never reaches the browser or the repo.
+
 ### Meeting, Chat & Vote (client)
 PRD ref: `prd.md > Meetings and Voting`.
 - `screens/Meeting.tsx`: who called it, the chat log and input (max 140 characters per message), a player list with vote buttons and a Skip button, a 90-second countdown, and who has voted (not *for whom*).
@@ -341,6 +351,7 @@ New folder/                      # project root (the hackathon repo)
 
 ## External Services and Dependencies
 - **Render** (hosting): https://render.com/docs/web-services. One Web Service from the GitHub repo, configured in Render's dashboard. No API calls from the code. Cost: covered by the learner's trial credits, or the free tier (750 instance-hours a month, sleeps after 15 minutes idle). No keys in the repo.
+- **Anthropic API** (Claude): `POST /v1/messages` through `@anthropic-ai/sdk`, docs https://docs.claude.com/en/api/messages. Key: `ANTHROPIC_API_KEY` on the server only. Cost ~20 short calls per game (Opus 5.5 ≈ $0.10/game, Haiku 5.5 ≈ $0.0015/game). Set a monthly spend limit in the Anthropic Console. Optional: everything works without it.
 - **Google Fonts** (Baloo 2, Nunito): loaded by stylesheet link, with system-font fallbacks if blocked.
 - **CC0 model packs:** downloaded once into `client/public/models/`. No runtime service.
 - **npm packages:** see **Stack**. No paid or rate-limited APIs. No AI service at runtime (Study-Bot is pre-written; `prd.md > Possible Later Enhancements` keeps AI-generated questions for later).
@@ -384,7 +395,7 @@ New folder/                      # project root (the hackathon repo)
 - **Clarified:** `<Canvas>` and JSX for 3D objects; per-frame motion through `useFrame` and refs, not React state; `useGLTF` with `<Suspense>` for models.
 - **Agreed check:** build step 1 is a small 3D test with one room, the bean, the fixed follow camera, and joystick plus WASD. **Evidence:** smooth movement in a desktop window and on a phone browser before any multiplayer code.
 
-- **No AI model at runtime for the hackathon** (learner, during `5-build`): Study-Bot and the practice bots are pre-written and rule-based; real Claude features are in `prd.md > Possible Later Enhancements` with cost estimates. The README must say plainly that Study-Bot is simulated.
+- **Real AI for features A and B** (learner, during `5-build`, reversing an earlier "later"): Claude writes Study-Bot's explanations and practice bots' meeting lines; the game still controls which answers are lies. Default model `claude-opus-5-5` (Anthropic's default; switching to a cheaper model is the learner's call via `CLAUDE_MODEL`). The README must explain what the AI does and does not decide.
 
 **Open (none block approval):**
 - Exact package versions, verified with `npm view` in build step 1.

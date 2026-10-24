@@ -76,7 +76,7 @@ function TitleScreen({ avatar }: { avatar: Avatar }) {
     <div className={`title-screen ${leaving ? "leaving" : ""}`} role="button" tabIndex={0} onClick={next} aria-label="Press anything to continue">
       <span className="title-content">
         <Logo />
-        <span className="tagline">Study-Bot is always confident. Someone in class made it lie.</span>
+        <span className="tagline">Never trust the bot blindly.</span>
         <span className="press-start">PRESS ANYTHING TO CONTINUE</span>
       </span>
     </div>

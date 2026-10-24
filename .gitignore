@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+.ai-spend.json
 node_modules/
 dist/
 *.log

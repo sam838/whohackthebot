@@ -64,6 +64,17 @@ Source: `scope.md > Inspiration & Identity`.
 
 ## Features and Behavior
 
+### Real AI: Study-Bot Talks and Bots Argue
+*Added during `5-build`: the learner first deferred real AI, then chose to build features A and B after a cost estimate.*
+- As a player, I want Study-Bot to explain its answer in its own confident words, so it feels like a real chatbot I might trust.
+  - [ ] Study-Bot's pick (A/B/C/D) shows instantly, as before; a short explanation in Study-Bot's overconfident voice types in a moment later.
+  - [ ] The game still decides which answer Study-Bot gives (true, or the lie when hacked); Claude only writes the explanation for it, and it never admits it might be wrong.
+  - [ ] If the AI is slow, unavailable, or not configured, the pre-written line stays and the game works exactly as before.
+- As a practice player, I want the bots to argue like real classmates in meetings.
+  - [ ] Each bot's meeting line is written by Claude from what that bot actually saw (where it was, who stood near the hacked terminal); the Bluffer bot lies convincingly.
+  - [ ] Falls back to the canned lines when the AI is unavailable.
+- The model is a setting (default Claude Opus 5.5); the API key lives only on the server.
+
 ### Practice Mode
 *Added during `5-build` after Devpost's live review session showed judges skip apps they can't try alone. Learner: "create practice mode with bots and the player can change what role they want."*
 - As a judge or a player without friends online, I want to play a full game alone against bots so I can try every part of the game in one window.
@@ -193,7 +204,7 @@ Source: `scope.md > The Unique Kernel`.
 - **Leavers' pieces go home** — a classmate who leaves returns their pieces to where they were found.
 - **Verify stays TRUE/FALSE** — reconfirmed after slice 3b.
 - **Practice mode with bots, role of your choice** — judges and solo players can try the full game in one window; reverses the earlier "no filler bots / no CPU opponents" decision for practice only. Multiplayer with friends stays the main mode.
-- **Study-Bot stays simulated for the hackathon** — "can we put the real AI later": pre-written answers keep the lie controlled, free, and reliable for judges; real AI moves to Later with a cost estimate.
+- **Real AI for Study-Bot's explanations and practice bots' meeting lines (A + B)** — first deferred ("can we put the real AI later"), then chosen after a cost estimate (~20 calls per game: Haiku 5.5 ≈ $0.0015, Sonnet 5.5 ≈ $0.03, Opus 5.5 ≈ $0.10). The game keeps control of which answer is a lie; Claude only writes the words. AI-generated questions stay on Later.
 - **Claims aren't verified** — anyone can claim a role, and nobody has to believe it.
 
 ## Assumptions to Confirm
@@ -234,7 +245,7 @@ Drafted by the agent as placeholders; the learner accepted them as drafted at ap
 - Multiple maps.
 - Full 3D with a free camera, possibly a Roblox version.
 - More special roles.
-- **Real AI (Claude) in the game** — decided during `5-build` to keep the hackathon version simulated and add real AI later. Options, cheapest first: Study-Bot explanations generated once and saved (16 texts, under $0.10, no delay); live bot meeting chat; AI-generated questions and lies. Estimated live cost ~20 calls per game: Claude Haiku 5.5 ≈ $0.0015/game, Claude Sonnet 5.5 ≈ $0.03, Claude Opus 5.5 ≈ $0.10. Needs a server-side key, a Console spend limit, per-room call limits, and a fallback to pre-written text.
+- AI-generated questions and lies (riskiest: a bad question breaks a round).
 - A real playtest with friends to tune balance.
 
 ## Non-Goals

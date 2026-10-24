@@ -99,6 +99,16 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: In one window, start Practice as the Bluffer and hack a terminal a bot will use. Then start Practice as a Student, team up with a bot at a terminal, and call a meeting. Say whether the bots feel alive enough to make practice fun.
   Commit: `Add practice mode with bots and role choice`
 
+- [x] **5d. Real AI: Study-Bot explains, bots argue**
+  Becomes usable: With an API key in `.env`, Study-Bot's confident explanation is written by Claude and types into its bubble a moment after the pick appears; in practice meetings, bots chat lines Claude writes from what they actually saw, with the Bluffer bot lying. Without a key (or if the AI is slow or down), everything works as before with the pre-written lines.
+  Why now: The learner chose to bring real AI into the hackathon version (features A + B) after a cost estimate, before the role book and packaging.
+  PRD ref: `prd.md > Real AI: Study-Bot Talks and Bots Argue`
+  Spec ref: `spec.md > AI Service (server)`, `spec.md > External Services and Dependencies`
+  Build: Add `@anthropic-ai/sdk`, `server/src/ai.ts` (prompts, caps, timeout, fallback), `.env` loading, the `terminal:botSays` event and a typing indicator in the Study-Bot bubble, the async `speak` hook in `BotController`, and `.env.example`.
+  Verify (mechanical): Vitest tests pass: AI is off without a key; the output cleaner trims, strips quotes, and caps length; caps stop calls after the limit; a failing or refused call returns undefined; bots fall back to canned lines when `speak` gives nothing. The simulation still passes with no key. `npm run build` passes. With a key: one live Study-Bot line and one bot meeting line are printed by a small script (learner runs it, since it uses their key).
+  Learner check: Put your key in `.env`, restart `npm run dev`, play Practice: open a terminal and watch Study-Bot explain its pick; call a meeting and read the bots' lines. Then remove the key and confirm the game still works.
+  Commit: `Let Claude write Study-Bot's explanations and bot meeting lines`
+
 - [ ] **6. Open your book: the role reveal**
   Becomes usable: After Start, everyone sees the classroom with an open-book overlay. Tapping "Open your book" shows your character on the left page and your role on the right, with the quick facts typing out letter by letter and a key-click sound. Play then begins.
   Why now: It replaces slice 3's temporary role banner with the game's own reveal, once avatars exist to show in the book.
@@ -174,3 +184,10 @@ Activity mode: [not started]
 - Study-Bot now drops out of view when you leave a screen and jumps back up with the new line on the next one (title → menu and between menu steps); all menu animations slowed down ~1.5–2× per learner feedback ("too fast").
 - Real AI (Claude) explicitly deferred to Later by the learner after a cost estimate (Haiku 5.5 ≈ $0.0015/game, Sonnet 5.5 ≈ $0.03, Opus 5.5 ≈ $0.10 at ~20 calls/game); Study-Bot stays pre-written for the hackathon. Slice 7 README must state that Study-Bot is simulated.
 - Lighting changed from late afternoon to early-afternoon daylight after a side-by-side of three presets (learner: "the new default is okay"); the comparison switch was removed.
+- Added slice 5d (real AI: Study-Bot explanations + bot meeting lines) — the learner reversed the earlier "real AI later" decision. Default model Claude Opus 5.5 (configurable); the game still controls which answers are lies.
+- Slice 5d: `terminal:botSays` event and `botTyping` flag added to the question payload; Study-Bot's pick still shows instantly and Claude's line follows. The simulation always forces the AI off so test runs never spend money; `npm run ai:check` makes two real calls with the learner's key. The simulation caught an `emit` binding bug in the new wiring that would have crashed every game start.
+- Slice 5d: the learner asked for a hard monthly AI budget (`AI_MONTHLY_LIMIT_USD`): past it, or when Anthropic reports a billing or spend-limit error, the game falls back to the pre-written lines.
+- Slice 5d: the first live check failed with a TLS error because Kaspersky Anti-Virus re-signs HTTPS traffic with its own root certificate, which Node does not trust by default. The server scripts now start Node with `--use-system-ca` (trusts the Windows certificate store; no change on Render). Failed connections no longer count toward the monthly budget; only timeouts, which may still be billed, do.
+- Slice 5d: bot meeting lines are asked for at most 15 words and only cut at 25 (the learner saw a line cut off with "…").
+- Title screen (learner feedback, outside the slice plan): the speech bubble no longer touches Study-Bot's antenna when it bounces or jumps in (the bot's rise is smoothly capped below the bubble); Study-Bot now acts out the game in a loop (a right answer stamped TRUE, a glitch "SYSTEM HACKED!", a confident wrong answer stamped FALSE, "Who hacked me?!") so the title shows what the game is about within seconds; the tagline is now "Never trust the bot blindly." in the title font. A three-step "how to play" row was tried and removed at the learner's request.
+- CREDITS.md now states that Study-Bot is an original mascot drawn in code, and what Claude does and doesn't decide.

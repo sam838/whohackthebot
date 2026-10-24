@@ -148,6 +148,14 @@ function AnswerStep({ q }: { q: OpenQuestion }) {
         <span>
           Easy one! The answer is <b>{LETTERS[q.botPick]}: {q.choices[q.botPick]}</b>.
         </span>
+        {q.botLine && <span className="bot-line">{q.botLine}</span>}
+        {q.botTyping && !q.botLine && (
+          <span className="bot-typing" aria-label="Study-Bot is typing">
+            <i />
+            <i />
+            <i />
+          </span>
+        )}
         <span className="bot-confidence">
           Confidence <meter min={0} max={100} value={q.confidence} /> {q.confidence}%
         </span>

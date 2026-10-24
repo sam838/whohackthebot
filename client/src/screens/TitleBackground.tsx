@@ -4,13 +4,43 @@ import { useEffect, useRef } from "react";
 // bouncing on a spinning sunburst, saying "I'm always right! …probably."
 // It teases the twist without being spooky. Drawn in code, so no image to license.
 // Wide screens: bot on the right (the logo sits on the left). Tall screens: bot at the bottom.
+// On the title it acts out the game in a loop, so a new player gets it in seconds:
+// a right answer, a hack, a confident wrong answer, then "who hacked me?".
+
+interface Beat {
+  /** How long this beat shows (ms). */
+  ms: number;
+  line1: string;
+  line2: string;
+  stamp?: "TRUE" | "FALSE";
+  glitch?: boolean;
+}
+
+const STORY: Beat[] = [
+  { ms: 2600, line1: "I'm always right!", line2: "…probably." },
+  { ms: 3000, line1: "Hottest planet? Venus!", line2: "Easy one.", stamp: "TRUE" },
+  { ms: 1300, line1: "SYSTEM HACKED!", line2: "#@!% ERR0R %!@#", glitch: true },
+  { ms: 3400, line1: "Hottest planet? Mercury!", line2: "100% sure!", stamp: "FALSE" },
+  { ms: 2800, line1: "Who hacked me?!", line2: "Vote them out of school!" },
+];
+const STORY_MS = STORY.reduce((sum, b) => sum + b.ms, 0);
+
+/** Which beat of the story is showing `ms` after Study-Bot came on screen, and for how long. */
+function storyBeat(ms: number): { beat: Beat; index: number; into: number } {
+  let into = ms % STORY_MS;
+  for (let index = 0; index < STORY.length; index++) {
+    if (into < STORY[index].ms) return { beat: STORY[index], index, into };
+    into -= STORY[index].ms;
+  }
+  return { beat: STORY[0], index: 0, into: 0 };
+}
 
 function roundRect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   c.beginPath();
   c.roundRect(x, y, w, h, r);
 }
 
-function drawBot(c: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+function drawBot(c: CanvasRenderingContext2D, x: number, y: number, s: number, t: number, glitch = false) {
   c.save();
   c.translate(x, y);
   c.scale(s, s);
@@ -30,19 +60,37 @@ function drawBot(c: CanvasRenderingContext2D, x: number, y: number, s: number, t
   roundRect(c, -80, -120, 160, 130, 34);
   c.fill();
   c.stroke();
-  c.fillStyle = "#2b2440";
+  c.fillStyle = glitch ? "#5a1026" : "#2b2440";
   roundRect(c, -60, -100, 120, 70, 20);
   c.fill();
-  c.fillStyle = "#7fe3ff";
-  c.beginPath();
-  c.arc(-25, -70, 12, Math.PI, 0);
-  c.arc(25, -70, 12, Math.PI, 0);
-  c.fill();
-  c.strokeStyle = "#7fe3ff";
-  c.lineWidth = 6;
-  c.beginPath();
-  c.arc(0, -55, 16, 0.2, Math.PI - 0.2);
-  c.stroke();
+  if (glitch) {
+    // Hacked: X eyes and a zigzag mouth.
+    c.strokeStyle = "#ff6b6b";
+    c.lineWidth = 6;
+    c.lineCap = "round";
+    c.beginPath();
+    for (const ex of [-25, 25]) {
+      c.moveTo(ex - 10, -82);
+      c.lineTo(ex + 10, -64);
+      c.moveTo(ex + 10, -82);
+      c.lineTo(ex - 10, -64);
+    }
+    c.moveTo(-18, -46);
+    for (let i = 1; i <= 6; i++) c.lineTo(-18 + i * 6, i % 2 ? -52 : -46);
+    c.stroke();
+    c.lineCap = "butt";
+  } else {
+    c.fillStyle = "#7fe3ff";
+    c.beginPath();
+    c.arc(-25, -70, 12, Math.PI, 0);
+    c.arc(25, -70, 12, Math.PI, 0);
+    c.fill();
+    c.strokeStyle = "#7fe3ff";
+    c.lineWidth = 6;
+    c.beginPath();
+    c.arc(0, -55, 16, 0.2, Math.PI - 0.2);
+    c.stroke();
+  }
   // body
   c.strokeStyle = "#2b2440";
   c.lineWidth = 8;
@@ -61,7 +109,16 @@ function drawBot(c: CanvasRenderingContext2D, x: number, y: number, s: number, t
   c.restore();
 }
 
-function drawBubble(c: CanvasRenderingContext2D, cx: number, top: number, s: number, tailX: number, line1: string, line2: string) {
+function drawBubble(
+  c: CanvasRenderingContext2D,
+  cx: number,
+  top: number,
+  s: number,
+  tailX: number,
+  line1: string,
+  line2: string,
+  glitch = false,
+) {
   const w = 640 * s;
   const h = 210 * s;
   const x = cx - w / 2;
@@ -82,7 +139,7 @@ function drawBubble(c: CanvasRenderingContext2D, cx: number, top: number, s: num
   c.fillStyle = "#ffffff";
   c.fillRect(tailX - 30 * s, top + h - 12 * s, 50 * s, 10 * s);
   c.textAlign = "center";
-  c.fillStyle = "#2b2440";
+  c.fillStyle = glitch ? "#e5484d" : "#2b2440";
   // Long lines shrink to fit inside the bubble.
   let size = 74;
   c.font = `800 ${size * s}px "Baloo 2", "Trebuchet MS", sans-serif`;
@@ -91,10 +148,35 @@ function drawBubble(c: CanvasRenderingContext2D, cx: number, top: number, s: num
     c.font = `800 ${size * s}px "Baloo 2", "Trebuchet MS", sans-serif`;
   }
   c.fillText(line1, cx, top + 105 * s);
-  c.fillStyle = "#6b6280";
+  c.fillStyle = glitch ? "#e5484d" : "#6b6280";
   c.font = `800 ${48 * s}px "Nunito", system-ui, sans-serif`;
   c.fillText(line2, cx, top + 172 * s);
   c.textAlign = "left";
+}
+
+/** A rubber stamp slammed onto the bubble's corner: green TRUE or red FALSE. */
+function drawStamp(c: CanvasRenderingContext2D, x: number, y: number, s: number, text: "TRUE" | "FALSE", slam: number) {
+  const color = text === "TRUE" ? "#22a565" : "#e5484d";
+  c.save();
+  c.translate(x, y);
+  c.rotate(-0.22);
+  const k = 1 + (1 - slam) * 1.2; // starts big, lands at full size
+  c.scale(k, k);
+  c.globalAlpha *= slam;
+  c.font = `800 ${46 * s}px "Baloo 2", "Trebuchet MS", sans-serif`;
+  const w = c.measureText(text).width + 44 * s;
+  const h = 72 * s;
+  c.fillStyle = "#ffffff";
+  c.strokeStyle = color;
+  c.lineWidth = 7 * s;
+  roundRect(c, -w / 2, -h / 2, w, h, 16 * s);
+  c.fill();
+  c.stroke();
+  c.fillStyle = color;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.fillText(text, 0, 4 * s);
+  c.restore();
 }
 
 interface Props {
@@ -103,6 +185,8 @@ interface Props {
   line2?: string;
   /** On tall screens, menus hide the bot so it never covers the card. */
   botOnNarrow?: boolean;
+  /** The title: Study-Bot acts out the game in a loop instead of saying one line. */
+  story?: boolean;
 }
 
 const easeOutCubic = (x: number) => 1 - Math.pow(1 - x, 3);
@@ -131,18 +215,19 @@ export function sendBotDown() {
  * restarts. When Study-Bot's line changes, it drops out of view and jumps back
  * up saying the new line.
  */
-export function TitleBackground({ line1 = "I'm always right!", line2 = "…probably.", botOnNarrow = true }: Props) {
+export function TitleBackground({ line1 = "I'm always right!", line2 = "…probably.", botOnNarrow = true, story = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The drawing loop reads the latest props without restarting.
-  const live = useRef({ shown: { line1, line2 }, next: { line1, line2 }, enterAt: performance.now(), botOnNarrow });
+  const live = useRef({ shown: { line1, line2, story }, next: { line1, line2, story }, enterAt: performance.now(), botOnNarrow });
   live.current.botOnNarrow = botOnNarrow;
+  live.current.next.story = story;
   const n = live.current.next;
   if (n.line1 !== line1 || n.line2 !== line2) {
     const now = performance.now();
     // Use the exit already cued by the screen, or start one now.
     // (A small margin, because the title switches screens right as its cued exit ends.)
     if (now - wallpaperCue.exitAt > BOT_EXIT_MS + 250) wallpaperCue.exitAt = now;
-    live.current.next = { line1, line2 };
+    live.current.next = { line1, line2, story };
     live.current.enterAt = wallpaperCue.exitAt + BOT_EXIT_MS;
   }
 
@@ -193,7 +278,26 @@ export function TitleBackground({ line1 = "I'm always right!", line2 = "…proba
       }
 
       // The new line takes over once the bot is out of sight.
-      if (now >= L.enterAt) L.shown = L.next;
+      if (now >= L.enterAt) L.shown = { ...L.next };
+
+      // The title's story loop: what Study-Bot says right now, and how that beat animates.
+      let say = { line1: L.shown.line1, line2: L.shown.line2 };
+      let glitch = false;
+      let stamp: Beat["stamp"];
+      let beatInto = Infinity;
+      if (L.shown.story && now >= L.enterAt) {
+        const b = storyBeat(now - L.enterAt);
+        say = b.beat;
+        glitch = Boolean(b.beat.glitch);
+        stamp = b.beat.stamp;
+        // Every beat pops in, except the very first, which arrives with the bot.
+        if (now - L.enterAt >= STORY[0].ms) beatInto = b.into;
+      }
+      if (glitch && !reduce) {
+        // The whole wallpaper flashes red while Study-Bot is being hacked.
+        c.fillStyle = `rgba(229, 72, 77, ${0.18 + 0.1 * Math.sin(now * 0.05)})`;
+        c.fillRect(0, 0, w, h);
+      }
 
       if (showBot) {
         const exiting = now >= wallpaperCue.exitAt && now < L.enterAt;
@@ -210,22 +314,36 @@ export function TitleBackground({ line1 = "I'm always right!", line2 = "…proba
           bubble = clamp01((now - L.enterAt - BUBBLE_DELAY_MS) / BUBBLE_POP_MS);
         }
 
-        const bounce = Math.abs(Math.sin(t * 0.004)) * 26 * s;
-        // Bot (antenna tip to feet ≈ 259 units) plus bubble (≈ 290) must fit the height.
+        // Bot (antenna tip to feet = 263 units) plus bubble (280 to its tail tip) must fit the height.
         const botScale = 1.75 * s;
-        const antennaTop = botBase - 259 * botScale;
-        drawBot(c, botX, botBase - 88 * botScale - bounce + offset, botScale, t);
+        const antennaTop = botBase - 263 * botScale; // at rest
+        const gap = 6 * s;
+        // The bubble sits above the highest the bot may rise, and the bot's rise (idle
+        // bounce plus the jump-in overshoot) is smoothly capped there, so it never reaches the tail.
+        const bubbleTop = Math.max(16 * s, antennaTop - gap - 22 * s - 280 * s);
+        const maxLift = Math.max(0, antennaTop - gap - (bubbleTop + 280 * s));
+        const lift = Math.abs(Math.sin(t * 0.004)) * 26 * s - offset;
+        const cappedLift = lift > 0 ? (maxLift > 0 ? maxLift * Math.tanh(lift / maxLift) : 0) : lift;
+        // Hacked: Study-Bot shakes and its bubble jitters.
+        const shake = glitch && !reduce ? (Math.random() - 0.5) * 14 * s : 0;
+        drawBot(c, botX + shake, botBase - 88 * botScale - cappedLift, botScale, t, glitch);
 
         if (bubble > 0) {
-          const k = exiting ? bubble : easeOutBack(bubble);
-          const bubbleTop = Math.max(16 * s, antennaTop - 290 * s);
-          const pivotY = bubbleTop + 280 * s;
+          // A new story beat re-pops the bubble a little.
+          const beatPop = reduce ? 1 : 0.9 + 0.1 * easeOutBack(clamp01(beatInto / 260));
+          const k = (exiting ? bubble : easeOutBack(bubble)) * beatPop;
+          const pivotY = bubbleTop + 280 * s; // the tail tip, so popping never pushes it down
           c.save();
           c.globalAlpha = easeOutCubic(bubble);
-          c.translate(botX, pivotY);
+          c.translate(botX + shake * 0.5, pivotY);
           c.scale(k, k);
           c.translate(-botX, -pivotY);
-          drawBubble(c, botX, bubbleTop, s, botX - 20 * s, L.shown.line1, L.shown.line2);
+          drawBubble(c, botX, bubbleTop, s, botX - 20 * s, say.line1, say.line2, glitch);
+          if (stamp) {
+            // The stamp lands a moment after the answer, so you read the answer first.
+            const slam = reduce ? 1 : easeOutCubic(clamp01((beatInto - 700) / 180));
+            if (slam > 0) drawStamp(c, botX + 270 * s, bubbleTop + 12 * s, s, stamp, slam);
+          }
           c.restore();
         }
       }

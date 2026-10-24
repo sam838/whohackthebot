@@ -78,6 +78,8 @@ export interface TerminalQuestion {
   /** How sure Study-Bot sounds, 0–100. Always high, whether right or not. */
   confidence: number;
   msLeft: number;
+  /** True when Claude is writing Study-Bot's explanation (a terminal:botSays follows). */
+  botTyping?: boolean;
 }
 
 export type AnswerOutcome = "correct" | "strike" | "wrong";

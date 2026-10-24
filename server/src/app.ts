@@ -9,13 +9,14 @@ import express from "express";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 import type { Role } from "@whtb/shared/types";
+import { AiService } from "./ai";
 import { BotController } from "./bots";
 import { ActionError, GameRoom } from "./game/GameRoom";
 import { RoomManager, gameState, lobbyState, positionsOf, type Room } from "./rooms";
 
 export type GameServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
-export function createApp() {
+export function createApp(options: { ai?: AiService } = {}) {
   const app = express();
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
@@ -24,6 +25,16 @@ export function createApp() {
   const httpServer = createServer(app);
   const io: GameServer = new Server(httpServer, { cors: { origin: true } });
   const rooms = new RoomManager();
+  const ai = options.ai ?? new AiService();
+  console.log(
+    !ai.enabled
+      ? `[ai] off (${process.env.AI_DISABLED === "1" ? "AI_DISABLED=1" : "no ANTHROPIC_API_KEY"}), using pre-written lines`
+      : ai.active
+        ? `[ai] Claude is on (${ai.model}), $${ai.spentThisMonth().toFixed(2)} of $${ai.monthlyLimitUsd} used this month`
+        : `[ai] monthly AI limit of $${ai.monthlyLimitUsd} reached, using pre-written lines`,
+  );
+  /** Recent meeting chat per room, for the bots' AI lines. */
+  const chatLog = new Map<string, string[]>();
   /** Practice rooms' bots, by room code. */
   const bots = new Map<string, BotController>();
   const PRACTICE_BOTS = 3;
@@ -38,8 +49,27 @@ export function createApp() {
       [...room.players.keys()],
       {
         // A socket id doubles as a private room, so this reaches one player only.
-        toPlayer: (id, event, payload) => (io.to(id).emit as (e: string, p: unknown) => boolean)(event, payload),
-        toRoom: (event, payload) => (io.to(room.code).emit as (e: string, p: unknown) => boolean)(event, payload),
+        toPlayer: (id, event, payload) => {
+          const to = io.to(id);
+          const emit = (e: string, p: unknown) => (to.emit as (e: string, p: unknown) => boolean).call(to, e, p);
+          if (event !== "terminal:question" || !ai.active || room.players.get(id)?.isBot) return void emit(event, payload);
+          // Study-Bot's pick shows at once; Claude's explanation follows when it's ready.
+          const q = payload as Parameters<ServerToClientEvents["terminal:question"]>[0];
+          emit(event, { ...q, botTyping: true });
+          void ai.studyBotLine(room.code, { question: q.prompt, choices: q.choices, pick: q.choices[q.botPick] }).then((text) => {
+            if (room.game?.hasOpenTerminal(id)) emit("terminal:botSays", { terminalId: q.terminalId, text: text ?? null });
+          });
+        },
+        toRoom: (event, payload) => {
+          if (event === "chat:message") {
+            const m = payload as { fromId: string; text: string };
+            const log = chatLog.get(room.code) ?? [];
+            log.push(`${room.players.get(m.fromId)?.name ?? "someone"}: ${m.text}`);
+            chatLog.set(room.code, log.slice(-6));
+          }
+          if (event === "vote:result") chatLog.delete(room.code);
+          (io.to(room.code).emit as (e: string, p: unknown) => boolean)(event, payload);
+        },
         respawn: (ids) => {
           const seats: Record<string, { x: number; z: number }> = {};
           ids.forEach((id, i) => {
@@ -85,6 +115,7 @@ export function createApp() {
             room.positionsDirty = true;
           },
           nameOf: (id) => room.players.get(id)?.name ?? "someone",
+          speak: ai.active ? (req) => ai.meetingLine(room.code, { ...req, recentChat: chatLog.get(room.code) ?? [] }) : undefined,
         }),
       );
     }
@@ -186,6 +217,7 @@ export function createApp() {
     }
     // A practice room disappears when its human leaves; drop its bots too.
     for (const code of bots.keys()) if (!live.has(code)) bots.delete(code);
+    for (const code of chatLog.keys()) if (!live.has(code)) chatLog.delete(code);
   }, 1000 / POSITION_BROADCAST_RATE);
   httpServer.on("close", () => clearInterval(ticker));
 
