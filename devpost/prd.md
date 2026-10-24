@@ -55,7 +55,7 @@ Source: `scope.md > Inspiration & Identity`.
 
 - **Common school, cartoon style.** Bright and friendly, recognizable as an everyday school (classroom, library, lab, canteen).
 - **Art style reference: Super Sus.** Cute, chunky cartoon characters with a soft, slightly 3D look, in bright colors. Version one is **2.5D**: real 3D models seen from a **fixed camera angle above that follows the player** (like Mobile Legends and Super Sus). The player never rotates the camera. Inspired by the style only: no Super Sus assets or characters.
-- **Interior design (added during build):** each room has its own floor, two-tone walls, door signs, and room-specific details: a chalkboard reading "Today's lesson: trust, but verify", hallway lockers, a library rug and lamps, a lab periodic table and flasks, and a canteen *kantin* menu (Nasi Goreng, Mie Ayam, Es Teh, priced in USD). Built from CC0 models and code-drawn pictures.
+- **Interior design (added during build):** each room has its own floor, two-tone walls, door signs, and room-specific details: a chalkboard reading "Today's lesson: trust, but verify", hallway lockers, a library rug and lamps, a lab periodic table and flasks, and a canteen menu board in English (Fried Rice, Chicken Noodles, Iced Tea, priced in USD; changed from a *kantin* menu in Indonesian at the learner's request, to match the CANTEEN door sign). Built from CC0 models and code-drawn pictures.
 - **Lighting: early-afternoon daylight** — bright, clean light with a slightly warm tint and a pale blue sky, matching the sunny title. Chosen after comparing noon, early afternoon, and late afternoon (first version was "too bright"; late afternoon felt moody next to the bright title).
 - **Do not copy Among Us.** The school setting and the book role reveal are the game's own identity.
 - **Role reveal:** opening a book in class; quick facts appear with a **typing animation and typing sound**, like Study-Bot writing.
@@ -120,8 +120,9 @@ Source: `scope.md > Inspiration & Identity`.
 - [ ] An on-screen joystick moves the player's character. Other players are visible moving in real time.
 - [ ] The school has a few rooms, starting in the classroom. See **Assumptions to Confirm** for the room count.
   *(Final review: doubled to 8 rooms plus a long hallway: Class 7A, Library, Science Lab, Canteen, Gym, Server Room, Music Room, Art Room.)*
-- [ ] **Limited vision:** during class you see a circle around you (about a room across); walls and distance hide classmates and darken the rest of the school. Meetings, the role book, Game Over, and expelled players see everyone.
+- [ ] **Limited vision:** during class you see a circle around you (about a room across); walls and distance hide classmates and darken the rest of the school. Meetings, the role book, Game Over, and expelled players see everyone. **The Bluffer sees everyone** ("hacked the school cameras"), at the learner's request, like an Among Us impostor's advantage.
 - [ ] Every classmate you can see has a **name tag in their player color** above their head, so sightings are clear ("green Kevin left the server room").
+- [ ] A **minimap** (top right, collapsible) shows the school, terminals, the meeting button, and you, never other players; the Bluffer also sees their hacked terminals. A legend explains the symbols.
 - [ ] The game downloads all models and fonts behind a short loading splash (at least 2.5 s, with a progress bar and a credit line), so nothing pops in later.
 - [ ] A task list shows which terminals the player still needs to visit.
 - [ ] Strike count (e.g. "Strikes: 1/3") and class progress are always visible to everyone.
@@ -157,6 +158,14 @@ Source: `scope.md > The Unique Kernel`.
 - [ ] A hacked terminal's next Study-Bot answer recommends the plausible wrong option, still sounding confident.
 - [ ] Hacking has a cooldown, so the Bluffer can't hack terminals back to back.
 - [ ] The Bluffer can open terminals and look busy like everyone else (fake tasks).
+
+### Bluffer: Expel
+*Added in final review (slice 9): careful players who never trust Study-Bot left the Bluffer no way to win.*
+- [ ] Next to a classmate (about 1.4 units), the Bluffer can **Expel** them (button or Q). Like Among Us it works even with witnesses: anyone who could see either of them gets "You saw Rina expel Kevin!" (changed at the learner's request from an earlier "nobody watching" rule).
+- [ ] 45-second cooldown, locked for the first 30 seconds of class, and at most players − 3 expels per game (1 with 4 players, 2 with 5), so winning by elimination always also takes a wrong vote.
+- [ ] An expelled player becomes a **hall monitor**: unseen by the living, sees everyone, and only watches (can't search, use terminals, vote, or chat). Their pieces go back where they were found. (The learner dropped searching for hall monitors to stay further from Among Us ghosts.)
+- [ ] An **expulsion slip** stays where it happened. A living classmate who walks onto it reports it and a meeting starts: "Kevin was expelled! Rina found the slip in the Science Lab."
+- [ ] Voted-out players become hall monitors too.
 
 ### Fact-Checker: Verify
 - [ ] At a terminal, the Fact-Checker sees **Verify** while it's unused.
@@ -258,6 +267,8 @@ Drafted by the agent as placeholders; the learner accepted them as drafted at ap
 - AI-generated questions and lies (riskiest: a bad question breaks a round).
 - A real playtest with friends to tune balance.
 - Room-based vision (see your whole room and a little through doorways) instead of a circle; clearer, but more work to draw.
+- A drop-off tray at each terminal, so hall monitors (or anyone) could leave pieces for whoever opens it later. Deferred: it weakens the "meet at the terminal" teamwork and its sightings, and shifts balance.
+- A minimap legend toggle and room-based fog on the minimap.
 - Practice bot difficulty (easy bots trust Study-Bot and vote randomly; hard bots double-check and track who was near hacked terminals). Question difficulty levels need a much bigger question bank first.
 
 ## Non-Goals

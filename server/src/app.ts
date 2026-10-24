@@ -203,7 +203,8 @@ export function createApp(options: { ai?: AiService; revealMs?: number; clientDi
 
     socket.on("move", (pos) => {
       const room = rooms.roomOf(socket.id);
-      if (room?.game && (!room.game.isAlive(socket.id) || room.game.phase !== "playing")) return;
+      // Hall monitors (voted out or expelled) keep walking the halls; nobody moves outside class time.
+      if (room?.game && (room.game.outOf(socket.id) === "left" || room.game.phase !== "playing")) return;
       rooms.move(socket.id, pos);
     });
 
@@ -214,6 +215,8 @@ export function createApp(options: { ai?: AiService; revealMs?: number; clientDi
     socket.on("terminal:botArrange", () => act((g) => g.botArrange(socket.id)));
     socket.on("terminal:close", () => act((g) => g.close(socket.id)));
     socket.on("meeting:call", () => act((g) => g.callMeeting(socket.id)));
+    socket.on("expel", (p) => act((g) => g.expel(socket.id, String(p?.targetId))));
+    socket.on("slip:report", (p) => act((g) => g.reportSlip(socket.id, String(p?.slipId))));
     socket.on("chat:send", (p) => act((g) => g.chat(socket.id, p?.text)));
     socket.on("vote:cast", (p) => act((g) => g.vote(socket.id, typeof p?.targetId === "string" ? p.targetId : null)));
     socket.on("room:leave", leaveCurrent);

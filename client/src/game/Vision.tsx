@@ -8,12 +8,12 @@ import type { Body } from "./useMovement";
 
 /**
  * Limited vision (prd.md > Moving Around the School). While class is on, you only
- * see a circle around yourself, cut off by walls. Meetings, the role book, Game Over,
- * and hall monitors (expelled players) see everyone.
+ * see a circle around yourself, cut off by walls. The Bluffer (who hacked the
+ * school's cameras), meetings, the role book, Game Over, and hall monitors see everyone.
  */
 export function visionIsLimited(): boolean {
   const s = useGame.getState();
-  return s.game?.phase === "playing" && !s.gameOver && amAlive(s);
+  return s.game?.phase === "playing" && !s.gameOver && amAlive(s) && s.role !== "bluffer";
 }
 
 /** Whether a classmate at `at` should be drawn for the viewer at `me`. */

@@ -7,6 +7,7 @@ import { NearbyWatcher } from "./NearbyWatcher";
 import { PLAYER_SCALE, Player } from "./Player";
 import { RemotePlayer } from "./RemotePlayer";
 import { SchoolMap } from "./SchoolMap";
+import { Slips3D } from "./Slips3D";
 import { Spots3D } from "./Spots3D";
 import { useMovement } from "./useMovement";
 import { VisionShade, shade } from "./Vision";
@@ -42,6 +43,7 @@ function Scene({ players, myId }: SceneProps) {
       <NearbyWatcher me={me} />
       <VisionShade me={me} />
       <Spots3D me={me} />
+      <Slips3D me={me} />
     </>
   );
 }

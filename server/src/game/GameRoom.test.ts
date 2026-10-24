@@ -1,4 +1,4 @@
-import { HACK_COOLDOWN_SECONDS, QUESTIONS_PER_CLASSMATE } from "@whtb/shared/constants";
+import { EXPEL_COOLDOWN_SECONDS, EXPEL_GRACE_SECONDS, HACK_COOLDOWN_SECONDS, QUESTIONS_PER_CLASSMATE } from "@whtb/shared/constants";
 import { TERMINALS } from "@whtb/shared/map";
 import { HIDING_SPOTS } from "@whtb/shared/pieces";
 import { QUESTIONS } from "@whtb/shared/questions";
@@ -591,5 +591,106 @@ describe("role reveal", () => {
     advance(1_000);
     game.tick();
     expect(game.phase).toBe("playing");
+  });
+});
+
+describe("expel", () => {
+  /** The Bluffer and a classmate alone in the gym; everyone else far away behind walls. */
+  function alone(n = 4) {
+    const t = setup(n);
+    const b = t.byRole("bluffer")[0];
+    const others = t.ids.filter((id) => id !== b);
+    const [victim, ...rest] = others;
+    t.positions.set(b, { x: 30, z: 4 });
+    t.positions.set(victim, { x: 31, z: 4 });
+    t.positions.set(rest[0], { x: 2, z: 4 }); // Class 7A
+    t.positions.set(rest[1], { x: 42, z: 15 }); // Art Room
+    for (const id of rest.slice(2)) t.positions.set(id, { x: 8, z: 15 }); // Science Lab
+    return { ...t, b, victim, rest };
+  }
+
+  it("works only for the Bluffer, right next to a classmate, and tells anyone who saw it", () => {
+    const { game, b, victim, rest, positions, last } = alone();
+    expect(() => game.expel(rest[0], victim)).toThrow("Only the Bluffer");
+    positions.set(victim, { x: 34, z: 4 });
+    expect(() => game.expel(b, victim)).toThrow("Get right next to them");
+    positions.set(victim, { x: 31, z: 4 });
+    positions.set(rest[0], { x: 33, z: 6 }); // a witness walks into the gym
+    game.expel(b, victim);
+    // Like Among Us, it still works, but the witness knows exactly what they saw.
+    expect(last(rest[0], "expel:witnessed")).toEqual({ blufferId: b, victimId: victim });
+    expect(last(rest[1], "expel:witnessed")).toBeUndefined();
+    expect(game.isAlive(victim)).toBe(false);
+    expect(game.outOf(victim)).toBe("expelled");
+    expect(game.slips).toEqual([{ id: expect.any(String), victimId: victim, x: 31, z: 4 }]);
+  });
+
+  it("has a cooldown, and stays locked for the first moments of class", () => {
+    const { game, b, victim, rest, positions, advance } = alone(5);
+    game.beginReveal(0);
+    game.tick(); // class starts
+    expect(() => game.expel(b, victim)).toThrow(`Expel ready in ${EXPEL_GRACE_SECONDS}s`);
+    advance(EXPEL_GRACE_SECONDS * 1000);
+    game.expel(b, victim);
+    positions.set(rest[0], { x: 31, z: 4 }); // the next classmate wanders into the gym alone
+    positions.set(rest[1], { x: 2, z: 6 });
+    expect(() => game.expel(b, rest[0])).toThrow("Expel ready in");
+  });
+
+  it("finding the slip starts a meeting about it, and clears the slips", () => {
+    const { game, b, victim, rest, positions, roomLast } = alone();
+    game.expel(b, victim);
+    const slip = game.slips[0];
+    positions.set(rest[1], { x: slip.x + 3, z: slip.z });
+    expect(() => game.reportSlip(rest[1], slip.id)).toThrow("Walk onto the slip");
+    positions.set(rest[1], { x: slip.x, z: slip.z + 0.5 });
+    game.reportSlip(rest[1], slip.id);
+    expect(game.phase).toBe("meeting");
+    expect(game.meetingReport).toEqual({ victimId: victim, finderId: rest[1], room: "Gym", x: slip.x, z: slip.z });
+    expect(game.slips).toEqual([]);
+    // Expelled players can't vote or chat.
+    expect(() => game.vote(victim, null)).toThrow();
+    expect(() => game.chat(victim, "it was them")).toThrow();
+    expect(roomLast("public")).toBeNull();
+  });
+
+  it("hall monitors only watch: their pieces go back, and they can't search or use terminals", () => {
+    const { game, b, victim, bag, grab, spotOf, pieceIdsOf, positions, walkTo } = alone();
+    grab(victim, pieceIdsOf(0)[0]);
+    positions.set(victim, { x: 31, z: 4 });
+    game.expel(b, victim);
+    expect(bag(victim)).toEqual([]);
+    expect(game.hiddenCount()).toBe(game.questions.length * 3);
+    const spot = spotOf(pieceIdsOf(0)[1]);
+    positions.set(victim, { x: spot.x, z: spot.z });
+    expect(() => game.examine(victim, spot.id)).toThrow();
+    walkTo(victim, "library-1");
+    expect(() => game.openTerminal(victim, "library-1")).toThrow();
+  });
+
+  it("allows players minus 3 expels (1 with 4 players, 2 with 5), so winning also takes a wrong vote", () => {
+    for (const n of [4, 5]) {
+      const { game, b, victim, rest, positions, advance } = alone(n);
+      game.expel(b, victim);
+      // The next classmate wanders into the gym alone; everyone else stays far away.
+      advance(EXPEL_COOLDOWN_SECONDS * 1000);
+      positions.set(rest[0], { x: 31, z: 4 });
+      positions.set(rest[1], { x: 2, z: 4 });
+      if (n === 4) {
+        expect(() => game.expel(b, rest[0])).toThrow("used all your expels");
+      } else {
+        game.expel(b, rest[0]);
+        advance(EXPEL_COOLDOWN_SECONDS * 1000);
+        positions.set(rest[1], { x: 31, z: 4 });
+        expect(() => game.expel(b, rest[1])).toThrow("used all your expels");
+      }
+    }
+  });
+
+  it("the Bluffer wins when only they and one classmate are left", () => {
+    const { game, b, victim, rest } = alone();
+    game.expel(b, victim);
+    game.removePlayer(rest[0]); // e.g. voted out by mistake (here: leaves)
+    expect(game.gameOver()?.winner).toBe("bluffer");
   });
 });

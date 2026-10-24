@@ -1,5 +1,6 @@
 import { STRIKES_TO_LOSE } from "@whtb/shared/constants";
 import { useGame } from "../net/store";
+import { Minimap } from "./Minimap";
 
 /** Strikes and class progress, always visible to everyone (prd.md > Moving Around the School). */
 export function StrikeBar() {
@@ -26,6 +27,7 @@ export function StrikeBar() {
           {game.progress}/{game.goal}
         </span>
       </div>
+      <Minimap />
     </div>
   );
 }

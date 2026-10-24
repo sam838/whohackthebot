@@ -205,7 +205,9 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | C→S | `lobby:start` | — | Host only, 4–5 players |
 | C→S | `practice:start` | `{name, character, color, role}` | Solo game with 3 bots |
 | C→S | `move` | `{x, z, heading}` | ~12/s, ignored unless `playing` |
-| C→S | `spot:examine` | `{spotId}` | Within reach; Bluffer max 2 held |
+| C→S | `spot:examine` | `{spotId}` | Within reach; Bluffer max 2 held; hall monitors too |
+| C→S | `expel` | `{targetId}` | Bluffer only; within 1.4; cooldown, grace, and limit; witnesses (`canSee`) get `expel:witnessed` |
+| C→S | `slip:report` | `{slipId}` | Living player standing on the slip; starts a meeting with `meetingReport` |
 | C→S | `terminal:open` | `{terminalId}` | Within reach; pool of nearby classmates must hold 3+ pieces |
 | C→S | `terminal:arrange` | `{order: pieceIds[3]}` | 3 pool pieces in reading order |
 | C→S | `terminal:botArrange` | — | Ask Study-Bot to arrange |
@@ -223,6 +225,8 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | S→C | `game:state` | `{phase, players[] (id, name, character, color, alive), strikes, progress, goal, meetingCaller?, phaseEndsAt?}` | Room. Never includes roles |
 | S→C | `positions` | `{[id]: {x, z, heading}}` | Room, ~12/s |
 | S→C | `spot:result` | `{spotId, piece?: {id, text}}` | Private; what you found there, if anything |
+| S→C | `expel:cooldown` | `{msLeft}` | Bluffer only; when Expel is ready again |
+| S→C | `expel:witnessed` | `{blufferId, victimId}` | Private; to classmates who could see the expel happen |
 | S→C | `game:bag` | `{pieces: {id, text}[]}` | **Private**: what you carry |
 | S→C | `terminal:arrange` | `{terminalId, cards: {id, text}[], msLeft}` | **Private**: the shuffled pool |
 | S→C | `terminal:arrangeWrong` | — | Private: try again |

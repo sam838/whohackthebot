@@ -114,11 +114,14 @@ export function poster(kind: "think" | "periodic" | "goggles" | "menu" | "map" |
       c.fillRect(0, 0, w, h);
       c.fillStyle = "#ffd84d";
       c.font = `800 40px ${FONT}`;
-      c.fillText("KANTIN", 60, 52);
+      c.textAlign = "center";
+      c.fillText("CANTEEN", w / 2, 52);
+      c.textAlign = "left";
       c.fillStyle = "#fff";
       c.font = `600 24px ${FONT}`;
-      [["Nasi Goreng", "$1.50"], ["Mie Ayam", "$1.75"], ["Bakso", "$1.75"], ["Es Teh", "$0.50"], ["Gorengan", "$0.25"]].forEach(([item, price], i) => {
-        c.fillText(item, 24, 104 + i * 42);
+      [["Fried Rice", "$1.50"], ["Chicken Noodles", "$1.75"], ["Meatball Soup", "$1.75"], ["Iced Tea", "$0.50"], ["Fried Snacks", "$0.25"]].forEach(([item, price], i) => {
+        // Long names squeeze to fit beside the price.
+        c.fillText(item, 24, 104 + i * 42, w - 24 - 90);
         c.textAlign = "right";
         c.fillText(price, w - 20, 104 + i * 42);
         c.textAlign = "left";
@@ -178,6 +181,25 @@ export function nameTag(name: string, color: string) {
     c.strokeText(name, w / 2, h / 2 + 3, textW - 24);
     c.fillStyle = "#ffffff";
     c.fillText(name, w / 2, h / 2 + 3, textW - 24);
+  });
+}
+
+/** An expulsion slip: pink paper with the name of who was expelled. */
+export function slipTexture(name: string) {
+  return make(`slip-${name}`, 256, 170, (c, w, h) => {
+    c.fillStyle = "#ffd6dc";
+    rounded(c, 4, 4, w - 8, h - 8, 12);
+    c.fill();
+    c.lineWidth = 6;
+    c.strokeStyle = "#e5484d";
+    c.stroke();
+    c.textAlign = "center";
+    c.fillStyle = "#e5484d";
+    c.font = `800 40px ${FONT}`;
+    c.fillText("EXPELLED", w / 2, 70);
+    c.fillStyle = "#2b2440";
+    c.font = `800 34px ${FONT}`;
+    c.fillText(name, w / 2, 122, w - 30);
   });
 }
 

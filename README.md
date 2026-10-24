@@ -16,14 +16,16 @@ Everyone gets a secret role in their **Student Handbook** at the start:
 | Role | Goal |
 |---|---|
 | **Student** | Find question pieces around the school, team up at Study-Bot terminals, and answer together. Trust Study-Bot, or double-check? |
-| **Bluffer** (1 player) | You hacked Study-Bot. Hack terminals so it gives confident wrong answers, and blend in. You win when the class trusts 3 wrong answers. |
+| **Bluffer** (1 player) | You hacked Study-Bot. Hack terminals so it gives confident wrong answers, and **Expel** a classmate next to you (anyone watching will see it, so pick your moment). You win when the class trusts 3 wrong answers, or when only you and one classmate are left. |
 | **Fact-Checker** (1 player) | Like a Student, but you can **Verify** one answer to see if Study-Bot is telling the truth. Stay hidden. |
 
 1. **Search for pieces.** Each question is split into 3 pieces hidden in different rooms: inside desks, behind posters, between books, in the lockers, even in the fridge. Walk up to things: a glowing ring on the floor means you can **Examine** it. Some hiding spots are empty.
 2. **Pool them at a terminal.** Everyone standing at the same terminal shares their pieces. Put 3 in the right order, or tap "Let Study-Bot arrange it". A hacked Study-Bot quietly builds a *different* question whose answer is its lie.
 3. **Answer.** Study-Bot recommends an answer with a confidence meter. **Double-check** costs 8 seconds and shows a hint. Trusting a hacked answer gives the class a strike, which everyone sees.
-4. **Meet and vote.** Anyone can press the button in Class 7A to call a meeting: chat, accuse, and vote someone out of school.
-5. **Game over.** The class wins by answering enough questions or voting out the Bluffer. The Bluffer wins at 3 strikes, or when only one classmate is left. **Myths busted** then shows every question's myth next to the truth.
+4. **Meet and vote.** Anyone can press the button in Class 7A to call a meeting: chat, accuse, and vote someone out of school. Finding an **expulsion slip** (left where the Bluffer expelled someone) starts a meeting too.
+5. **Hall monitors.** Voted-out and expelled players walk the halls unseen and watch the class; they can't search, vote, chat, or answer. Their pieces go back where they were found.
+6. **Limited vision.** You only see a circle around you; walls hide classmates. Every classmate you can see has a name tag in their color.
+7. **Game over.** The class wins by answering enough questions or voting out the Bluffer. The Bluffer wins at 3 strikes, or when only one classmate is left. **Myths busted** then shows every question's myth next to the truth.
 
 ## Where the AI is (and isn't)
 

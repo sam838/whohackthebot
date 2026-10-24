@@ -13,6 +13,16 @@ export interface PublicPlayer {
   /** Avatar character id (shared/avatars.ts). */
   character: string;
   alive: boolean;
+  /** Why they're out of class, once they are: voted out, expelled by the Bluffer, or left the game. */
+  out?: "voted" | "expelled" | "left";
+}
+
+/** An expulsion slip lying where a classmate was expelled, until someone reports it. */
+export interface Slip {
+  id: string;
+  victimId: string;
+  x: number;
+  z: number;
 }
 
 export interface LobbyState {
@@ -30,6 +40,10 @@ export interface GameStatePublic {
   goal: number;
   /** Who called the current meeting. */
   meetingCallerId?: string;
+  /** When the meeting was started by finding an expulsion slip: who was expelled, who found it, where. */
+  meetingReport?: { victimId: string; finderId: string; room: string; x: number; z: number };
+  /** Expulsion slips not yet reported. */
+  slips: Slip[];
   /** Milliseconds left in the role reveal, meeting, or vote-result phase. */
   phaseMsLeft?: number;
   /** Who has voted in this meeting (not for whom). */

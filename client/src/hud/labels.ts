@@ -17,6 +17,6 @@ export const ROLE_NAMES: Record<Role, string> = {
 /** One-line reminder of your role in the HUD, after the role book has closed. */
 export const ROLE_REMINDERS: Record<Role, string> = {
   student: "Collect pieces, team up at a terminal, build questions. Study-Bot might be hacked.",
-  bluffer: "Hack terminals so Study-Bot lies. Collect and solve like everyone to blend in (max 2 pieces).",
+  bluffer: "You see everyone. Hack terminals so Study-Bot lies; Expel (Q) a classmate when nobody is watching. Blend in (max 2 pieces).",
   factChecker: "Collect pieces and team up. You can Verify one answer. Stay hidden.",
 };

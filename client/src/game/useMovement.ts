@@ -28,6 +28,7 @@ export function useMovement(spawn: Point): React.RefObject<Body> {
   const unsent = useRef(true);
 
   useEffect(() => {
+    localPlayer.body = body.current;
     localPlayer.teleport = (x, z) => {
       body.current.x = x;
       body.current.z = z;
@@ -36,6 +37,7 @@ export function useMovement(spawn: Point): React.RefObject<Body> {
     };
     return () => {
       localPlayer.teleport = undefined;
+      localPlayer.body = undefined;
     };
   }, []);
 
@@ -43,7 +45,8 @@ export function useMovement(spawn: Point): React.RefObject<Body> {
     const dt = Math.min(delta, 0.05);
     // Stand still in a terminal panel, a meeting, after being kicked out, or when the game ends.
     const state = useGame.getState();
-    const frozen = panelOpen(state) || state.gameOver || state.game?.phase !== "playing" || !amAlive(state);
+    // Hall monitors keep walking the halls; nobody moves outside class time.
+    const frozen = panelOpen(state) || state.gameOver || state.game?.phase !== "playing";
     const dir = frozen ? { x: 0, z: 0 } : readDirection();
     const b = body.current;
     b.moving = dir.x !== 0 || dir.z !== 0;

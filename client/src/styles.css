@@ -2303,3 +2303,95 @@ body {
     animation: none;
   }
 }
+
+/* Expel: the Bluffer's button next to a classmate. */
+.action.expel {
+  width: 84px;
+  height: 84px;
+  font-size: 17px;
+  background: #2b2440;
+  color: #fff;
+}
+
+/* Minimap: the school and you, under the strike and class bars (hud/Minimap.tsx). */
+.minimap {
+  width: min(260px, 42vw);
+  background: rgba(255, 250, 240, 0.94);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.minimap.closed {
+  width: auto;
+}
+
+.minimap-head {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: 800 12px var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ink);
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.minimap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0 6px 6px;
+}
+
+.minimap-label {
+  font: 800 1.5px var(--display);
+  fill: #2b2440;
+  opacity: 0.65;
+}
+
+.minimap-legend {
+  margin: 0;
+  padding: 0 10px 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+  font: 700 11px var(--body);
+  color: var(--ink);
+}
+
+.minimap-legend .key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--ink);
+  margin-left: 4px;
+}
+
+.minimap-legend .key:first-child {
+  margin-left: 0;
+}
+
+.minimap-legend .terminal {
+  background: #ffd84d;
+  border-radius: 2px;
+}
+
+.minimap-legend .hacked {
+  background: #e5484d;
+  border-radius: 2px;
+}
+
+.minimap-legend .button,
+.minimap-legend .you {
+  border-radius: 50%;
+}
+
+.minimap-legend .button {
+  background: #e5484d;
+}

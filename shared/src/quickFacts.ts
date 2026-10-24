@@ -18,8 +18,8 @@ export const QUICK_FACTS: Record<Role, QuickFacts> = {
   bluffer: {
     title: "Bluffer",
     facts:
-      "You hacked Study-Bot. Hack terminals so it gives convincing wrong answers, and blend in so nobody suspects you.",
-    win: `Get the class to trust ${STRIKES_TO_LOSE} wrong answers.`,
+      "You hacked Study-Bot and the school cameras: you see everyone, even through walls. Hack terminals so Study-Bot lies, and Expel (Q) a classmate next to you. Anyone watching will see it, so pick your moment.",
+    win: `Get the class to trust ${STRIKES_TO_LOSE} wrong answers, or be one of the last two left in class.`,
   },
   factChecker: {
     title: "Fact-Checker",

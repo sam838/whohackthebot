@@ -7,7 +7,7 @@
 // exactly the same rules as people.
 
 import { buildObstacles, moveWithCollision } from "@whtb/shared/collision";
-import { INTERACT_RADIUS, PLAYER_RADIUS, WALK_SPEED } from "@whtb/shared/constants";
+import { EXPEL_RADIUS, INTERACT_RADIUS, PLAYER_RADIUS, SLIP_REPORT_RADIUS, WALK_SPEED } from "@whtb/shared/constants";
 import { distance, nearMeetingButton } from "@whtb/shared/geometry";
 import { MEETING_BUTTON, ROOMS, TERMINALS, roomAt, type Point } from "@whtb/shared/map";
 import { findPath, isWalkable } from "@whtb/shared/nav";
@@ -31,6 +31,8 @@ type Goal =
   | { kind: "help"; terminalId: string; until: number }
   | { kind: "hack"; terminalId: string }
   | { kind: "search"; spotId: string }
+  | { kind: "hunt"; targetId: string; giveUpAt: number }
+  | { kind: "report"; slipId: string }
   | { kind: "meeting" };
 
 interface Bot {
@@ -87,8 +89,8 @@ export class BotController {
   private lastPhase: string;
   /** What each bot saw: bot → terminal → classmate seen near it → when. */
   private sightings = new Map<string, Map<string, Map<string, number>>>();
-  /** Where each bot last saw each classmate (bot → classmate → position). */
-  private lastSeen = new Map<string, Map<string, Point>>();
+  /** Where and when each bot last saw each classmate (bot → classmate → position). */
+  private lastSeen = new Map<string, Map<string, Point & { at: number }>>();
 
   constructor(private world: BotWorld) {
     this.now = world.now ?? Date.now;
@@ -134,6 +136,11 @@ export class BotController {
 
   // --- Watching: who stands near which terminal, and blame after a strike ---
 
+  /** What a bot can see: the Bluffer sees everyone (like the player Bluffer); others have limited vision. */
+  private sees(bot: Bot, from: Point, to: Point): boolean {
+    return this.game.roles.get(bot.id) === "bluffer" || canSee(from, to);
+  }
+
   /** Each bot notes who it can see standing near a terminal (limited vision, like players). */
   private watch(now: number) {
     for (const bot of this.bots) {
@@ -144,8 +151,8 @@ export class BotController {
       const log = this.sightings.get(bot.id)!;
       for (const id of this.game.aliveIds()) {
         const pos = id === bot.id ? undefined : this.world.position(id);
-        if (!pos || !canSee(eyes, pos)) continue;
-        this.lastSeen.get(bot.id)!.set(id, { x: pos.x, z: pos.z });
+        if (!pos || !this.sees(bot, eyes, pos)) continue;
+        this.lastSeen.get(bot.id)!.set(id, { x: pos.x, z: pos.z, at: now });
         for (const t of TERMINALS) {
           if (distance(pos, t) > 2.5) continue;
           if (!log.has(t.id)) log.set(t.id, new Map());
@@ -254,6 +261,26 @@ export class BotController {
       return this.setGoal(bot, { kind: "help", terminalId: humanTerminal.id, until: now + 15_000 }, terminalStand(humanTerminal.id));
     }
 
+    if (role === "bluffer" && game.expelReady() && this.random() < 0.6) {
+      // The Bluffer sees everyone: go after the nearest classmate nobody else can see.
+      const classmates = game.aliveIds().filter((id) => id !== bot.id);
+      const alone = classmates
+        .map((id) => ({ id, p: this.world.position(id) }))
+        .filter((c): c is { id: string; p: PlayerPosition } => Boolean(c.p))
+        .filter(
+          (c) =>
+            !classmates.some((o) => {
+              if (o === c.id) return false;
+              const w = this.world.position(o);
+              return Boolean(w && canSee(w, c.p));
+            }),
+        )
+        .sort((a, b) => distance(pos, a.p) - distance(pos, b.p));
+      if (alone.length) {
+        return this.setGoal(bot, { kind: "hunt", targetId: alone[0].id, giveUpAt: now + 15_000 }, alone[0].p);
+      }
+    }
+
     if (role === "bluffer" && game.hackReady() && this.random() < 0.5) {
       const t = this.terminalToHack(bot);
       return this.setGoal(bot, { kind: "hack", terminalId: t.id }, terminalStand(t.id));
@@ -289,6 +316,35 @@ export class BotController {
     if (bot.terminalSteps.length) {
       while (bot.terminalSteps.length && now >= bot.terminalSteps[0].at) this.try(bot.terminalSteps.shift()!.run);
       return;
+    }
+
+    // Anyone but the Bluffer reports an expulsion slip they can see.
+    if (game.roles.get(bot.id) !== "bluffer" && bot.goal?.kind !== "report") {
+      const slip = game.slips.find((s) => canSee(pos, s));
+      if (slip) return this.setGoal(bot, { kind: "report", slipId: slip.id }, slip);
+    }
+    if (bot.goal?.kind === "report") {
+      const slipId = bot.goal.slipId;
+      const slip = game.slips.find((s) => s.id === slipId);
+      if (!slip) bot.goal = undefined;
+      else if (distance(pos, slip) <= SLIP_REPORT_RADIUS) {
+        bot.goal = undefined;
+        return this.try(() => game.reportSlip(bot.id, slip.id));
+      }
+    }
+    // The Bluffer bot follows its target and expels them when they're within reach.
+    if (bot.goal?.kind === "hunt") {
+      const goal = bot.goal;
+      const target = this.world.position(goal.targetId);
+      if (!target || !game.isAlive(goal.targetId) || now > goal.giveUpAt || !this.sees(bot, pos, target)) {
+        bot.goal = undefined;
+      } else if (distance(pos, target) <= EXPEL_RADIUS) {
+        bot.goal = undefined;
+        bot.waitUntil = now + 800;
+        return this.try(() => game.expel(bot.id, goal.targetId));
+      } else if (bot.path.length === 0 || this.random() < 0.05) {
+        bot.path = findPath(pos, target);
+      }
     }
 
     if (now < bot.waitUntil) return;
@@ -387,6 +443,18 @@ export class BotController {
       if (phase === "meeting") {
         bot.chatAt = now + 2000 + this.random() * 6000;
         bot.voteAt = now + 8000 + this.random() * 12000;
+        const report = this.game.meetingReport;
+        // Saw the expel happen: certain.
+        if (report && this.game.lastExpelWitnesses.includes(bot.id)) {
+          const bluffer = [...this.game.roles].find(([, r]) => r === "bluffer")?.[0];
+          if (bluffer) bot.suspicion.set(bluffer, (bot.suspicion.get(bluffer) ?? 0) + 10);
+        }
+        if (report) {
+          for (const [pid, seen] of this.lastSeen.get(bot.id) ?? []) {
+            if (pid === bot.id || pid === report.victimId || now - seen.at > MEMORY_MS) continue;
+            if (distance(seen, report) <= 7) bot.suspicion.set(pid, (bot.suspicion.get(pid) ?? 0) + 2);
+          }
+        }
       }
     }
   }

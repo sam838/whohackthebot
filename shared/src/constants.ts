@@ -14,6 +14,12 @@ export const STRIKES_TO_LOSE = 3;
 export const QUESTION_SECONDS = 30;
 export const DOUBLE_CHECK_COST_SECONDS = 8;
 export const HACK_COOLDOWN_SECONDS = 20;
+/** Expel (the Bluffer's elimination power): reach, cooldown, and a quiet start to class. */
+export const EXPEL_RADIUS = 1.4;
+export const EXPEL_COOLDOWN_SECONDS = 45;
+export const EXPEL_GRACE_SECONDS = 30;
+/** Walking this close to an expulsion slip reports it. */
+export const SLIP_REPORT_RADIUS = 1.2;
 export const MEETING_SECONDS = 90;
 /** How long the vote result stays on screen before play resumes. */
 export const VOTE_RESULT_SECONDS = 6;

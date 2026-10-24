@@ -6,20 +6,25 @@ import {
   BLUFFER_MAX_PIECES,
   CHAT_MAX_LENGTH,
   DOUBLE_CHECK_COST_SECONDS,
+  EXPEL_COOLDOWN_SECONDS,
+  EXPEL_GRACE_SECONDS,
+  EXPEL_RADIUS,
   HACK_COOLDOWN_SECONDS,
   INTERACT_RADIUS,
   MEETING_CALLS_PER_PLAYER,
   MEETING_SECONDS,
   QUESTION_SECONDS,
   QUESTIONS_PER_CLASSMATE,
+  SLIP_REPORT_RADIUS,
   VOTE_RESULT_SECONDS,
 } from "@whtb/shared/constants";
 import type { ServerToClientEvents } from "@whtb/shared/events";
 import { distance, nearMeetingButton } from "@whtb/shared/geometry";
-import { TERMINALS, type Point } from "@whtb/shared/map";
+import { TERMINALS, roomAt, type Point } from "@whtb/shared/map";
 import { EXAMINE_RADIUS, HIDING_SPOTS, PIECE_ROOMS } from "@whtb/shared/pieces";
 import { QUESTIONS, type Question } from "@whtb/shared/questions";
-import type { AnswerOutcome, ArrangeCard, ErrorCode, GameOver, Role } from "@whtb/shared/types";
+import type { AnswerOutcome, ArrangeCard, ErrorCode, GameOver, PublicPlayer, Role, Slip } from "@whtb/shared/types";
+import { canSee } from "@whtb/shared/vision";
 import { assignRoles, checkWinner, shuffle, tallyVotes, type Random, type WinResult } from "./rules";
 
 /** Where the game is between start and game over. */
@@ -92,6 +97,22 @@ export class GameRoom {
   private phaseEndsAt = 0;
   phase: GamePhase = "playing";
   meetingCallerId: string | undefined;
+  /** Set when the meeting started from a reported expulsion slip. */
+  meetingReport: { victimId: string; finderId: string; room: string; x: number; z: number } | undefined;
+  /** Expulsion slips waiting to be found. */
+  slips: Slip[] = [];
+  /** Why each player is out of class (voted, expelled, or left). */
+  private outReason = new Map<string, NonNullable<PublicPlayer["out"]>>();
+  private expelReadyAt = 0;
+  /** Who saw the latest expel (practice bots read this, like players read their message). */
+  lastExpelWitnesses: string[] = [];
+  /**
+   * The Bluffer may expel at most (players - 3) classmates: 1 with 4 players, 2 with 5.
+   * Winning by elimination then always also takes a wrong vote, so the class always
+   * gets a meeting to catch them first.
+   */
+  private expelsLeft: number;
+  private slipCount = 0;
   /** Terminals where a trusted lie caused a strike, in order (practice bots use this as a clue). */
   readonly strikeTerminals: string[] = [];
   strikes = 0;
@@ -106,6 +127,7 @@ export class GameRoom {
     fixedRoles?: ReadonlyMap<string, Role>,
   ) {
     this.roles = assignRoles(playerIds, random, fixedRoles);
+    this.expelsLeft = Math.max(0, playerIds.length - 3);
     this.alive = new Set(playerIds);
     playerIds.forEach((id) => this.meetingCalls.set(id, MEETING_CALLS_PER_PLAYER));
     const classmates = playerIds.length - 1;
@@ -153,6 +175,10 @@ export class GameRoom {
 
   isAlive(id: string): boolean {
     return this.alive.has(id);
+  }
+
+  outOf(id: string): PublicPlayer["out"] {
+    return this.outReason.get(id);
   }
 
   aliveIds(): string[] {
@@ -455,6 +481,16 @@ export class GameRoom {
     return [...this.hacked];
   }
 
+  /** Bluffer only (bots): whether Expel is off cooldown. */
+  expelReady(): boolean {
+    return this.expelsLeft > 0 && this.now() >= this.expelReadyAt;
+  }
+
+  /** How many more classmates the Bluffer may expel this game. */
+  expelsRemaining(): number {
+    return this.expelsLeft;
+  }
+
   hackReady(): boolean {
     return this.now() >= this.hackReadyAt;
   }
@@ -483,13 +519,76 @@ export class GameRoom {
     if (!pos || !nearMeetingButton(pos)) throw new ActionError("TOO_FAR", "Walk to the meeting button in the classroom.");
     if ((this.meetingCalls.get(playerId) ?? 0) <= 0) throw new ActionError("NOT_ALLOWED", "You already used your meeting.");
     this.meetingCalls.set(playerId, this.meetingCalls.get(playerId)! - 1);
+    this.startMeeting(playerId);
+  }
+
+  private startMeeting(callerId: string, report?: { victimId: string; finderId: string; room: string; x: number; z: number }): void {
     // Everyone stops what they're doing; open terminals close with nothing lost.
     this.open.clear();
     this.votes.clear();
     this.phase = "meeting";
-    this.meetingCallerId = playerId;
+    this.meetingCallerId = callerId;
+    this.meetingReport = report;
+    // Any slips still lying around are cleared away with the meeting.
+    this.slips = [];
     this.phaseEndsAt = this.now() + MEETING_SECONDS * 1000;
     this.send.publicChanged();
+  }
+
+  // --- Expel: the Bluffer's elimination power ---
+
+  /** Whether any classmate other than these two can see either of them. */
+  /** Classmates (other than these two) who can see either of them right now. */
+  witnessesOf(blufferId: string, targetId: string): string[] {
+    const a = this.positionOf(blufferId);
+    const b = this.positionOf(targetId);
+    if (!a || !b) return [];
+    return this.aliveIds().filter((id) => {
+      if (id === blufferId || id === targetId) return false;
+      const w = this.positionOf(id);
+      return Boolean(w && (canSee(w, a) || canSee(w, b)));
+    });
+  }
+
+  /**
+   * Bluffer only: expel the classmate next to them. Like Among Us, it works even if
+   * someone is watching; that's the Bluffer's gamble, and witnesses are told what they saw.
+   */
+  expel(playerId: string, targetId: string): void {
+    const role = this.requirePlaying(playerId);
+    if (role !== "bluffer") throw new ActionError("NOT_ALLOWED", "Only the Bluffer can expel.");
+    if (targetId === playerId || !this.alive.has(targetId)) throw new ActionError("NOT_ALLOWED", "You can't expel them.");
+    if (this.expelsLeft <= 0) throw new ActionError("NOT_ALLOWED", "You've used all your expels.");
+    const wait = this.expelReadyAt - this.now();
+    if (wait > 0) throw new ActionError("COOLDOWN", `Expel ready in ${Math.ceil(wait / 1000)}s.`);
+    const me = this.positionOf(playerId);
+    const them = this.positionOf(targetId);
+    if (!me || !them || distance(me, them) > EXPEL_RADIUS + 0.3) throw new ActionError("TOO_FAR", "Get right next to them.");
+    const witnesses = this.witnessesOf(playerId, targetId);
+
+    // They become a hall monitor who can only watch; their pieces go back where they were found.
+    this.expelsLeft--;
+    this.eject(targetId);
+    this.outReason.set(targetId, "expelled");
+    this.sendBag(targetId);
+    this.slips.push({ id: `slip-${++this.slipCount}`, victimId: targetId, x: them.x, z: them.z });
+    this.expelReadyAt = this.now() + EXPEL_COOLDOWN_SECONDS * 1000;
+    this.send.toPlayer(playerId, "expel:cooldown", { msLeft: EXPEL_COOLDOWN_SECONDS * 1000 });
+    for (const w of witnesses) this.send.toPlayer(w, "expel:witnessed", { blufferId: playerId, victimId: targetId });
+    this.lastExpelWitnesses = witnesses;
+    this.send.publicChanged();
+    this.checkWin();
+  }
+
+  /** A living classmate walked onto an expulsion slip: everyone meets about it. */
+  reportSlip(playerId: string, slipId: string): void {
+    this.requirePlaying(playerId);
+    const slip = this.slips.find((s) => s.id === slipId);
+    if (!slip) return;
+    const pos = this.positionOf(playerId);
+    if (!pos || distance(pos, slip) > SLIP_REPORT_RADIUS + 0.4) throw new ActionError("TOO_FAR", "Walk onto the slip to report it.");
+    const room = roomAt(slip)?.name ?? "Hallway";
+    this.startMeeting(playerId, { victimId: slip.victimId, finderId: playerId, room, x: slip.x, z: slip.z });
   }
 
   chat(playerId: string, rawText: unknown): void {
@@ -513,7 +612,10 @@ export class GameRoom {
   private endMeeting(): void {
     const { ejectedId, counts } = tallyVotes(this.votes);
     const wasBluffer = ejectedId !== null && this.roles.get(ejectedId) === "bluffer";
-    if (ejectedId) this.eject(ejectedId);
+    if (ejectedId) {
+      this.eject(ejectedId);
+      this.outReason.set(ejectedId, "voted");
+    }
     this.phase = "voteResult";
     this.phaseEndsAt = this.now() + VOTE_RESULT_SECONDS * 1000;
     this.send.toRoom("vote:result", { ejectedId, wasBluffer, counts });
@@ -546,6 +648,9 @@ export class GameRoom {
   private endReveal(): void {
     this.phase = "playing";
     this.ready.clear();
+    // Expel stays locked for the first moments of class.
+    this.expelReadyAt = this.now() + EXPEL_GRACE_SECONDS * 1000;
+    this.send.toPlayer(this.blufferId(), "expel:cooldown", { msLeft: EXPEL_GRACE_SECONDS * 1000 });
     this.send.publicChanged();
   }
 
@@ -553,6 +658,7 @@ export class GameRoom {
   private endVoteResult(): void {
     this.votes.clear();
     this.meetingCallerId = undefined;
+    this.meetingReport = undefined;
     this.phase = "playing";
     this.checkWin();
     if (this.over) return;
@@ -582,7 +688,14 @@ export class GameRoom {
 
   /** A player disconnected: same as being voted out, and the game checks for a winner right away. */
   removePlayer(playerId: string): void {
-    if (!this.alive.has(playerId)) return;
+    if (this.outReason.get(playerId) === "left") return;
+    const wasAlive = this.alive.has(playerId);
+    this.outReason.set(playerId, "left");
+    // A hall monitor who leaves just puts their pieces back.
+    if (!wasAlive) {
+      for (const p of this.pieces.values()) if (p.holderId === playerId) p.holderId = undefined;
+      return;
+    }
     this.eject(playerId);
     this.send.publicChanged();
     this.checkWin();

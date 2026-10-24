@@ -63,6 +63,10 @@ interface GameStore {
   /** Terminals this player (the Bluffer) has hacked and nobody has used yet. */
   myHacks: string[];
   hackReadyAt: number;
+  /** Bluffer: when Expel is ready again (performance.now() time). */
+  expelReadyAt: number;
+  /** Bluffer: the classmate close enough to expel, if any. */
+  nearVictim: string | undefined;
   gameOver: GameOver | undefined;
   /** Updated by the scene when the local player walks in/out of reach. */
   nearTerminal: string | undefined;
@@ -94,6 +98,8 @@ const freshGame = {
   verifyUsed: false,
   myHacks: [],
   hackReadyAt: 0,
+  expelReadyAt: 0,
+  nearVictim: undefined,
   gameOver: undefined,
   nearTerminal: undefined,
   nearButton: false,
@@ -179,10 +185,10 @@ export function closeBook() {
 let errorTimer: ReturnType<typeof setTimeout> | undefined;
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
-function showNotice(notice: string) {
+function showNotice(notice: string, ms = 2200) {
   useGame.setState({ notice });
   clearTimeout(noticeTimer);
-  noticeTimer = setTimeout(() => useGame.setState({ notice: undefined }), 2200);
+  noticeTimer = setTimeout(() => useGame.setState({ notice: undefined }), ms);
 }
 
 socket.on("connect", () => useGame.setState({ connected: true, myId: socket.id }));
@@ -278,6 +284,11 @@ socket.on("terminal:result", ({ outcome, truth }) => {
   setTimeout(() => {
     if (useGame.getState().question === shown) useGame.setState({ question: undefined });
   }, truth ? 4500 : 1800);
+});
+socket.on("expel:cooldown", ({ msLeft }) => useGame.setState({ expelReadyAt: performance.now() + msLeft }));
+socket.on("expel:witnessed", ({ blufferId, victimId }) => {
+  const name = (id: string) => useGame.getState().game?.players.find((p) => p.id === id)?.name ?? "Someone";
+  showNotice(`👀 You saw ${name(blufferId)} expel ${name(victimId)}!`, 6000);
 });
 socket.on("terminal:hacked", ({ terminalId, cooldownMs }) =>
   useGame.setState((s) => ({ myHacks: [...s.myHacks, terminalId], hackReadyAt: performance.now() + cooldownMs })),

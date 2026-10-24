@@ -192,6 +192,7 @@ export function publicPlayers(room: Room): PublicPlayer[] {
     color,
     character,
     alive: room.game ? room.game.isAlive(id) : true,
+    out: room.game?.outOf(id),
   }));
 }
 
@@ -208,6 +209,8 @@ export function gameState(room: Room): GameStatePublic {
     progress: g?.progress ?? 0,
     goal: g?.goal() ?? 0,
     meetingCallerId: g?.meetingCallerId,
+    meetingReport: g?.meetingReport,
+    slips: g?.slips ?? [],
     phaseMsLeft: g?.phaseMsLeft(),
     votedIds: g?.votedIds() ?? [],
     readyIds: g?.readyIds() ?? [],

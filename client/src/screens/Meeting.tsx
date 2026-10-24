@@ -47,7 +47,14 @@ export function Meeting() {
           <h2 className="heading">Class meeting!</h2>
           <span className="countdown-num">{secs}s</span>
         </div>
-        {caller && <p className="meeting-caller">Called by {caller.name}</p>}
+        {game.meetingReport ? (
+          <p className="meeting-caller">
+            📄 {nameOf(game.meetingReport.victimId)?.name ?? "Someone"} was expelled! {nameOf(game.meetingReport.finderId)?.name ?? "Someone"} found the
+            slip in the {game.meetingReport.room}.
+          </p>
+        ) : (
+          caller && <p className="meeting-caller">Called by {caller.name}</p>
+        )}
 
         <div className="chat-log" ref={logRef} aria-live="polite">
           {chat.length === 0 ? (

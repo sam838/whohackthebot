@@ -31,11 +31,18 @@ function ConnectionBanner() {
   return <div className="banner">Connecting to school… (this can take up to a minute)</div>;
 }
 
+/** For hall monitors: why you're out, and what you can still do. */
 function SpectatorBanner() {
   const alive = useGame(amAlive);
   const over = useGame((s) => Boolean(s.gameOver));
+  const out = useGame((s) => s.game?.players.find((p) => p.id === s.myId)?.out);
   if (alive || over) return null;
-  return <div className="spectator">You were kicked out of school. Watching the class…</div>;
+  const why = out === "expelled" ? "You were expelled by the Bluffer!" : "You were voted out of class.";
+  return (
+    <div className="spectator">
+      {why} You're a hall monitor now: walk the halls unseen and watch the class. You can't search, vote, chat, or answer.
+    </div>
+  );
 }
 
 function Toast() {
@@ -51,9 +58,15 @@ function Toast() {
 function useUseKey() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "KeyE" || e.repeat || e.target instanceof HTMLInputElement) return;
+      if ((e.code !== "KeyE" && e.code !== "KeyQ") || e.repeat || e.target instanceof HTMLInputElement) return;
       const s = useGame.getState();
-      if (panelOpen(s) || s.gameOver || s.game?.phase !== "playing" || !amAlive(s)) return;
+      if (panelOpen(s) || s.gameOver || s.game?.phase !== "playing") return;
+      // Hall monitors only watch.
+      if (!amAlive(s)) return;
+      if (e.code === "KeyQ") {
+        if (s.role === "bluffer" && s.nearVictim) socket.emit("expel", { targetId: s.nearVictim });
+        return;
+      }
       if (s.nearButton) socket.emit("meeting:call");
       else if (s.nearTerminal) socket.emit("terminal:open", { terminalId: s.nearTerminal });
       else if (s.nearSpot) startSearch(s.nearSpot);

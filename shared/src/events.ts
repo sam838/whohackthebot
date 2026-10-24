@@ -32,6 +32,10 @@ export interface ClientToServerEvents {
   /** Walk away from the terminal without answering. */
   "terminal:close": () => void;
   "meeting:call": () => void;
+  /** Bluffer only: expel the classmate standing next to you (nobody else may see it). */
+  expel: (p: { targetId: string }) => void;
+  /** You walked onto an expulsion slip: report it, which starts a meeting. */
+  "slip:report": (p: { slipId: string }) => void;
   "chat:send": (p: { text: string }) => void;
   "vote:cast": (p: { targetId: string | null }) => void;
   /** Leave the room and go back to the menu. */
@@ -62,6 +66,10 @@ export interface ServerToClientEvents {
   "terminal:verifyResult": (p: { botIsRight: boolean }) => void;
   "terminal:result": (p: { outcome: AnswerOutcome; truth?: Truth }) => void;
   "terminal:hacked": (p: { terminalId: string; cooldownMs: number }) => void;
+  /** Bluffer only: when Expel is ready again (after class starts, and after each expel). */
+  "expel:cooldown": (p: { msLeft: number }) => void;
+  /** Private: you saw the Bluffer expel someone (you could see one of them at that moment). */
+  "expel:witnessed": (p: { blufferId: string; victimId: string }) => void;
   /** To the Bluffer: someone just got your hacked answer. */
   "terminal:hackUsed": (p: { terminalId: string }) => void;
   // Everyone in the room.
