@@ -23,9 +23,12 @@ function Scene({ players, myId }: SceneProps) {
 
   return (
     <>
-      <color attach="background" args={["#bfe3f2"]} />
-      <hemisphereLight args={["#ffffff", "#b9a7c9", 1.6]} />
-      <directionalLight position={[8, 20, 12]} intensity={1.4} />
+      {/* Late afternoon after class: a low, warm sun from the west and a dimmer, peachy sky. */}
+      <color attach="background" args={["#e8a87c"]} />
+      <fog attach="fog" args={["#e8a87c", 22, 44]} />
+      <hemisphereLight args={["#ffd9b0", "#6d5677", 1.05]} />
+      <directionalLight position={[-14, 9, 6]} intensity={1.15} color="#ffb070" />
+      <ambientLight intensity={0.15} color="#ffcfa0" />
       <SchoolMap />
       <Player color={myColor} character={myCharacter} body={me} isYou ghost={!players[myIndex]?.alive} />
       {players

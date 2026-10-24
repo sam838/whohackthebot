@@ -79,6 +79,16 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: Set an avatar, reload, and confirm it's remembered. In a second window pick a different one, join the same lobby, and check both characters in the lobby and walking in the school.
   Commit: `Add avatar setup with CC0 characters`
 
+- [x] **5b. Make the school feel like a school (interior design)**
+  Becomes usable: Each room has its own floor (wood, carpet, lab tiles, canteen checks, hallway linoleum) and two-tone walls. Classroom 7A has a chalkboard ("Today's lesson: trust, but verify"), a teacher's desk, desk chairs, a clock, a window, and a poster. The hallway has lockers, and every door has a room sign. The library has a rug, lamps, and a plant. The lab has a periodic table, a safety poster, a sink, and flasks. The canteen has a kantin menu board, a counter, stools, a vending machine, and a window.
+  Why now: After slice 5 the learner said the school "still feel plain without interior design or map design" and chose to build it from CC0 pieces plus code-drawn details, with no license risk.
+  PRD ref: `prd.md > Look and Feel`
+  Spec ref: `spec.md > School Scene (client 3D)`, `spec.md > Look and Feel`
+  Build: More Kenney Furniture Kit (CC0) models, canvas-painted floors, posters, signs, a chalkboard, lockers, and a vending machine front (`client/src/game/textures.ts`), `client/src/game/Decor.tsx`, two-tone walls, and new solid furniture (teacher's desk, sink, counter, vending machine) in `shared/map.ts`.
+  Verify (mechanical): A new reachability test flood-fills the floor from a classroom seat and confirms every seat, every terminal, the meeting button, and every piece hiding spot is still reachable. All tests, the simulation, and the build pass, and every new model file is served.
+  Learner check: Walk through all five areas and say whether the school now feels like a school, and what still feels plain or wrong (stretched, floating, or backwards models).
+  Commit: `Decorate the school with CC0 furniture and painted details`
+
 - [ ] **6. Open your book: the role reveal**
   Becomes usable: After Start, everyone sees the classroom with an open-book overlay. Tapping "Open your book" shows your character on the left page and your role on the right, with the quick facts typing out letter by letter and a key-click sound. Play then begins.
   Why now: It replaces slice 3's temporary role banner with the game's own reveal, once avatars exist to show in the book.
@@ -139,3 +149,6 @@ Activity mode: [not started]
 - Replaced the temporary `hud/GameOverNotice.tsx` with `screens/GameOver.tsx`; added a `room:leave` event (Back to menu) and `game:respawn` (seats after a meeting) not listed in the spec event table. Meeting/vote-result are sub-phases of a playing game (`GamePhase`), and the vote result stays on screen 6 seconds before a game-over check so the "kicked out" moment is seen.
 - Avatar Setup offers all 12 Kenney Mini Characters (the plan said 4–6) since the pack has 12 at no extra cost. Characters keep their own textures; the player's color shows as a disc under their feet instead of tinting the model (tinting a textured model muddies it). If two players pick the same color, the later one gets the next free color.
 - Added decorative CC0 furniture (plants, fridge, trash can, books) as solid map entries so collisions and piece spots stay consistent; every model falls back to its old box if it fails to load. Added `client/src/game/Character.tsx`, `FittedModel.tsx`, and `ModelBoundary.tsx` (not named in the spec).
+- Added slice 5b (interior design) at the learner's request after slice 5; no ready-made classroom pack was clearly CC0 with redistribution allowed, so the school is built from Kenney CC0 models plus canvas-painted details. Floor room-name labels were replaced by door signs (also removing a font download from a CDN).
+- Lighting changed to warm, dim late afternoon (low orange sun from the west, peach sky and fog, posters lit by the scene instead of glowing) and kantin prices to USD — learner feedback on slice 5b.
+- Slice 5b follow-up from learner screenshots: bookcases filled with books, library floor changed from purple dotted carpet to dark wood ("the carpet feel off"), office chairs replaced with simple school chairs, and lived-in props added (notebooks, backpacks, globe, apple, meal trays) in `client/src/game/Props.tsx`.

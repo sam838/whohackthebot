@@ -51,6 +51,8 @@ Source: `scope.md > Inspiration & Identity`.
 
 - **Common school, cartoon style.** Bright and friendly, recognizable as an everyday school (classroom, library, lab, canteen).
 - **Art style reference: Super Sus.** Cute, chunky cartoon characters with a soft, slightly 3D look, in bright colors. Version one is **2.5D**: real 3D models seen from a **fixed camera angle above that follows the player** (like Mobile Legends and Super Sus). The player never rotates the camera. Inspired by the style only: no Super Sus assets or characters.
+- **Interior design (added during build):** each room has its own floor, two-tone walls, door signs, and room-specific details: a chalkboard reading "Today's lesson: trust, but verify", hallway lockers, a library rug and lamps, a lab periodic table and flasks, and a canteen *kantin* menu (Nasi Goreng, Mie Ayam, Es Teh, priced in USD). Built from CC0 models and code-drawn pictures.
+- **Lighting: warm, dim late afternoon** (learner: "not too bright") — a low orange sun, a peach sky, and windows glowing with sunset light.
 - **Do not copy Among Us.** The school setting and the book role reveal are the game's own identity.
 - **Role reveal:** opening a book in class; quick facts appear with a **typing animation and typing sound**, like Study-Bot writing.
 - Study-Bot should feel like a confident chatbot (chat-bubble style answers).

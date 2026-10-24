@@ -1,8 +1,10 @@
-import { Text } from "@react-three/drei";
 import { Suspense } from "react";
+import type { Texture } from "three";
+import { Decor } from "./Decor";
 import { FittedModel } from "./FittedModel";
 import { ModelBoundary } from "./ModelBoundary";
 import { Terminal3D } from "./Terminal3D";
+import { chalkboard, checkerFloor, linoleumFloor, vendingFront, woodFloor } from "./textures";
 import {
   FURNITURE,
   type Furniture,
@@ -12,10 +14,30 @@ import {
   WALLS,
   WALL_HEIGHT,
   WALL_THICKNESS,
+  type Room,
 } from "@whtb/shared/map";
 
-const WALL_COLOR = "#8c7aa3";
+const WALL_COLOR = "#a89bc0";
+const WALL_BASE_COLOR = "#6f5f8c";
 const WALL_CAP_COLOR = "#5a4a6b";
+const WALL_BASE_HEIGHT = 0.45;
+
+/** Each room's floor: wood, carpet, tiles, or hallway linoleum (one tile = 2×2 units). */
+function floorTexture(r: Room): Texture {
+  const repeat: [number, number] = [r.w / 2, r.d / 2];
+  switch (r.id) {
+    case "classroom":
+      return woodFloor(repeat);
+    case "library":
+      return woodFloor(repeat, true);
+    case "lab":
+      return checkerFloor("#f4f6f8", "#d5dde3", repeat);
+    case "canteen":
+      return checkerFloor("#fff3e0", "#f7c59f", repeat);
+    default:
+      return linoleumFloor([r.w / 4, 1]);
+  }
+}
 
 function Floors() {
   return (
@@ -23,30 +45,14 @@ function Floors() {
       {ROOMS.map((r) => (
         <mesh key={r.id} rotation-x={-Math.PI / 2} position={[r.x + r.w / 2, 0, r.z + r.d / 2]}>
           <planeGeometry args={[r.w, r.d]} />
-          <meshToonMaterial color={r.color} />
+          <meshToonMaterial map={floorTexture(r)} />
         </mesh>
       ))}
-      {/* Labels load a font; give them their own Suspense so the map never waits on it. */}
-      <Suspense fallback={null}>
-      {ROOMS.filter((r) => r.id !== "hallway").map((r) => (
-        <Text
-          key={`${r.id}-label`}
-          position={[r.x + 0.5, 0.02, r.z + r.d - 0.5]}
-          rotation-x={-Math.PI / 2}
-          anchorX="left"
-          anchorY="bottom"
-          fontSize={0.6}
-          color="#2b2440"
-          fillOpacity={0.4}
-        >
-          {r.name.toUpperCase()}
-        </Text>
-      ))}
-      </Suspense>
     </>
   );
 }
 
+/** Two-tone walls: a darker band along the bottom, a lighter wall, and a cap on top. */
 function Walls() {
   return (
     <>
@@ -57,10 +63,15 @@ function Walls() {
         const sizeZ = horizontal ? WALL_THICKNESS : length;
         const cx = (x1 + x2) / 2;
         const cz = (z1 + z2) / 2;
+        const upper = WALL_HEIGHT - WALL_BASE_HEIGHT;
         return (
           <group key={i} position={[cx, 0, cz]}>
-            <mesh position-y={WALL_HEIGHT / 2}>
-              <boxGeometry args={[sizeX, WALL_HEIGHT, sizeZ]} />
+            <mesh position-y={WALL_BASE_HEIGHT / 2}>
+              <boxGeometry args={[sizeX + 0.02, WALL_BASE_HEIGHT, sizeZ + 0.02]} />
+              <meshToonMaterial color={WALL_BASE_COLOR} />
+            </mesh>
+            <mesh position-y={WALL_BASE_HEIGHT + upper / 2}>
+              <boxGeometry args={[sizeX, upper, sizeZ]} />
               <meshToonMaterial color={WALL_COLOR} />
             </mesh>
             <mesh position-y={WALL_HEIGHT + 0.04}>
@@ -74,9 +85,12 @@ function Walls() {
   );
 }
 
-/** Kenney Furniture Kit models (CC0) for each kind; the board stays a simple box. */
+/** Kenney Furniture Kit models (CC0) for each kind; the board and vending machine are painted boxes. */
 const MODEL_FOR: Partial<Record<Furniture["kind"], string>> = {
   desk: "/models/furniture/desk.glb",
+  teacherDesk: "/models/furniture/desk.glb",
+  sink: "/models/furniture/kitchenSink.glb",
+  counter: "/models/furniture/kitchenBar.glb",
   shelf: "/models/furniture/bookcaseClosedWide.glb",
   table: "/models/furniture/table.glb",
   labTable: "/models/furniture/table.glb",
@@ -96,10 +110,28 @@ function BoxPiece({ f }: { f: Furniture }) {
   );
 }
 
+/** A box with a picture on the side facing the camera (the chalkboard, the vending machine). */
+function PaintedBox({ f, front }: { f: Furniture; front: Texture }) {
+  return (
+    <mesh position={[f.x, (f.y ?? 0) + f.h / 2, f.z]}>
+      <boxGeometry args={[f.w, f.h, f.d]} />
+      {/* box faces: +x, -x, +y, -y, +z (front), -z */}
+      <meshToonMaterial attach="material-0" color={f.color} />
+      <meshToonMaterial attach="material-1" color={f.color} />
+      <meshToonMaterial attach="material-2" color={f.color} />
+      <meshToonMaterial attach="material-3" color={f.color} />
+      <meshToonMaterial attach="material-4" map={front} />
+      <meshToonMaterial attach="material-5" color={f.color} />
+    </mesh>
+  );
+}
+
 function FurnitureSet() {
   return (
     <>
       {FURNITURE.map((f, i) => {
+        if (f.kind === "board") return <PaintedBox key={i} f={f} front={chalkboard()} />;
+        if (f.kind === "vending") return <PaintedBox key={i} f={f} front={vendingFront()} />;
         const file = MODEL_FOR[f.kind];
         if (!file) return <BoxPiece key={i} f={f} />;
         // If a model fails to load, the plain box stands in for it.
@@ -149,6 +181,7 @@ export function SchoolMap() {
       <FurnitureSet />
       <Terminals />
       <MeetingButton />
+      <Decor />
     </>
   );
 }

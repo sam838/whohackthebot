@@ -18,7 +18,21 @@ export interface Room {
 export type WallSegment = [x1: number, z1: number, x2: number, z2: number];
 
 export interface Furniture {
-  kind: "desk" | "board" | "shelf" | "table" | "labTable" | "canteenTable" | "plant" | "fridge" | "trashcan" | "books";
+  kind:
+    | "desk"
+    | "teacherDesk"
+    | "board"
+    | "shelf"
+    | "table"
+    | "labTable"
+    | "canteenTable"
+    | "plant"
+    | "fridge"
+    | "trashcan"
+    | "books"
+    | "sink"
+    | "counter"
+    | "vending";
   x: number;
   z: number;
   w: number;
@@ -81,7 +95,8 @@ for (let row = 0; row < 2; row++) {
 
 export const FURNITURE: Furniture[] = [
   ...desks,
-  { kind: "board", x: 6, z: 0.3, w: 5, d: 0.15, h: 1.4, y: 0.7, color: "#2f5d4a", solid: false },
+  { kind: "board", x: 6, z: 0.25, w: 5, d: 0.12, h: 1.0, y: 0.45, color: "#2f5d4a", solid: false },
+  { kind: "teacherDesk", x: 10, z: 1.7, w: 1.6, d: 0.8, h: 0.8, color: "#a8744f", solid: true },
   ...[0, 1, 2, 3].map(
     (i): Furniture => ({ kind: "shelf", x: 14.2 + i * 2.6, z: 0.65, w: 2, d: 0.7, h: 1.4, color: "#8a5a3c", solid: true }),
   ),
@@ -97,6 +112,9 @@ export const FURNITURE: Furniture[] = [
   { kind: "plant", x: 11.3, z: 17.3, w: 0.7, d: 0.7, h: 1.4, color: "#4cbf87", solid: true },
   { kind: "fridge", x: 12.7, z: 10.8, w: 0.9, d: 0.8, h: 1.9, color: "#e8e8e8", solid: true },
   { kind: "trashcan", x: 23.4, z: 14, w: 0.6, d: 0.6, h: 0.9, color: "#7a7f87", solid: true },
+  { kind: "sink", x: 8.6, z: 10.6, w: 1.2, d: 0.7, h: 1.0, color: "#dfe6ea", solid: true },
+  { kind: "counter", x: 20.8, z: 10.6, w: 2.2, d: 0.7, h: 1.0, color: "#c98f5a", solid: true },
+  { kind: "vending", x: 12.7, z: 12.4, w: 0.8, d: 0.7, h: 1.8, color: "#e5484d", solid: true },
 ];
 
 export const TERMINAL_SIZE = { w: 0.9, d: 0.6 };
