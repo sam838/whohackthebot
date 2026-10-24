@@ -2,6 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { Suspense, useRef } from "react";
 import type { Group, Texture } from "three";
 import { FittedModel, type FitBox } from "./FittedModel";
+import { LIGHTING } from "./lighting";
 import { ModelBoundary } from "./ModelBoundary";
 import { Apple, Backpack, Globe, MealTray, Notebook, SchoolChair, ShelfBooks } from "./Props";
 import { lockerFront, poster, sign } from "./textures";
@@ -28,7 +29,7 @@ function Window({ x, z, w }: { x: number; z: number; w: number }) {
       </mesh>
       <mesh position-z={0.005}>
         <planeGeometry args={[w, 0.8]} />
-        <meshBasicMaterial color="#ffc98f" />
+        <meshBasicMaterial color={LIGHTING.windowGlass} />
       </mesh>
       <mesh position-z={0.01}>
         <planeGeometry args={[0.05, 0.8]} />

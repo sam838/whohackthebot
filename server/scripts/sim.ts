@@ -206,6 +206,29 @@ async function main() {
       ps.forEach((s) => s.disconnect());
     }
 
+    console.log("practice mode");
+    {
+      const solo = await open();
+      const roleSeen = once<{ role: string }>(solo, "game:role");
+      const started = once<{ phase: string; players: { name: string }[] }>(solo, "game:state");
+      solo.emit("practice:start", { name: "Solo", character: "male-a", color: "#f2c14e", role: "bluffer" });
+      const st = await started;
+      check(st.phase === "playing" && st.players.length === 4, "practice starts at once with 4 players");
+      check(st.players.filter((p) => p.name.endsWith("(bot)")).length === 3, "3 of them are bots");
+      check((await roleSeen).role === "bluffer", "the player gets the role they picked");
+      const first = await once<Record<string, { x: number; z: number }>>(solo, "positions");
+      const moved = await once<Record<string, { x: number; z: number }>>(solo, "positions", (p) =>
+        Object.keys(p).some((id) => id.startsWith("bot-") && first[id] && Math.hypot(p[id].x - first[id].x, p[id].z - first[id].z) > 0.5),
+      );
+      check(Boolean(moved), "bots walk around the school");
+      solo.emit("room:leave");
+      await new Promise((r) => setTimeout(r, 200));
+      const again = once<{ code: string }>(solo, "error");
+      solo.emit("lobby:join", { code: "ZZZZ", name: "x", character: "male-a", color: "#f2c14e" });
+      check((await again).code === "ROOM_NOT_FOUND", "leaving practice ends it");
+      solo.disconnect();
+    }
+
     console.log("\nAll simulation checks passed.");
   } finally {
     clients.forEach((s) => s.disconnect());

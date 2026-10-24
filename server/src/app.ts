@@ -8,6 +8,8 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@whtb/shared/ev
 import express from "express";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
+import type { Role } from "@whtb/shared/types";
+import { BotController } from "./bots";
 import { ActionError, GameRoom } from "./game/GameRoom";
 import { RoomManager, gameState, lobbyState, positionsOf, type Room } from "./rooms";
 
@@ -22,13 +24,16 @@ export function createApp() {
   const httpServer = createServer(app);
   const io: GameServer = new Server(httpServer, { cors: { origin: true } });
   const rooms = new RoomManager();
+  /** Practice rooms' bots, by room code. */
+  const bots = new Map<string, BotController>();
+  const PRACTICE_BOTS = 3;
 
   function broadcastRoom(room: Room) {
     if (room.phase === "lobby") io.to(room.code).emit("lobby:state", lobbyState(room));
     else io.to(room.code).emit("game:state", gameState(room));
   }
 
-  function startGame(room: Room) {
+  function startGame(room: Room, fixedRoles?: Map<string, Role>) {
     room.game = new GameRoom(
       [...room.players.keys()],
       {
@@ -58,9 +63,31 @@ export function createApp() {
         },
       },
       (id) => room.players.get(id)?.position,
+      Math.random,
+      Date.now,
+      fixedRoles,
     );
     broadcastRoom(room);
     room.game.dealSecrets();
+    if (room.practice) {
+      const players = [...room.players.values()];
+      bots.set(
+        room.code,
+        new BotController({
+          game: room.game,
+          botIds: players.filter((p) => p.isBot).map((p) => p.id),
+          humanId: players.find((p) => !p.isBot)!.id,
+          position: (id) => room.players.get(id)?.position,
+          move: (id, pos) => {
+            const p = room.players.get(id);
+            if (!p) return;
+            p.position = pos;
+            room.positionsDirty = true;
+          },
+          nameOf: (id) => room.players.get(id)?.name ?? "someone",
+        }),
+      );
+    }
   }
 
   io.on("connection", (socket) => {
@@ -104,6 +131,16 @@ export function createApp() {
       enter(r.value);
     });
 
+    socket.on("practice:start", (p) => {
+      leaveCurrent();
+      const role = p?.role;
+      const r = rooms.createPractice(socket.id, { name: p?.name, character: p?.character, color: p?.color }, PRACTICE_BOTS);
+      if (!r.ok) return void socket.emit("error", r.error);
+      socket.join(r.value.code);
+      const fixed = role === "student" || role === "bluffer" || role === "factChecker" ? new Map([[socket.id, role as Role]]) : undefined;
+      startGame(r.value, fixed);
+    });
+
     socket.on("lobby:start", () => {
       const r = rooms.start(socket.id);
       if (!r.ok) return void socket.emit("error", r.error);
@@ -135,15 +172,20 @@ export function createApp() {
     socket.on("disconnect", leaveCurrent);
   });
 
-  // ~12 times a second: send positions and let each referee time out questions.
+  // ~12 times a second: send positions, run practice bots, and let each referee time out questions.
   const ticker = setInterval(() => {
+    const live = new Set<string>();
     for (const room of rooms.allRooms()) {
+      live.add(room.code);
       if (room.phase !== "playing") continue;
+      bots.get(room.code)?.tick(1 / POSITION_BROADCAST_RATE);
       room.game?.tick();
       if (!room.positionsDirty) continue;
       room.positionsDirty = false;
       io.to(room.code).emit("positions", positionsOf(room));
     }
+    // A practice room disappears when its human leaves; drop its bots too.
+    for (const code of bots.keys()) if (!live.has(code)) bots.delete(code);
   }, 1000 / POSITION_BROADCAST_RATE);
   httpServer.on("close", () => clearInterval(ticker));
 

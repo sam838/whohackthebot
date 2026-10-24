@@ -1,7 +1,22 @@
 import type { Avatar } from "@whtb/shared/avatars";
+import type { Role } from "@whtb/shared/types";
+import { useEffect, useRef, useState } from "react";
 import { AvatarPicker } from "../avatar/AvatarPicker";
+import { AvatarPreview } from "../avatar/AvatarPreview";
 import { socket } from "../net/socket";
-import { useGame } from "../net/store";
+import { useGame, type MenuScreen } from "../net/store";
+import { MENU_LINES, MenuBackdrop } from "./MenuBackdrop";
+import { BOT_EXIT_MS, sendBotDown } from "./TitleBackground";
+
+// Game-style menus, one short step per screen so nothing needs scrolling:
+// Title (press start) → Your student → Mode (VS / Practice) → VS or Practice.
+
+const PRACTICE_ROLES: { role: Role | "random"; label: string; line: string }[] = [
+  { role: "student", label: "Student", line: "Find pieces, don't trust a lie" },
+  { role: "bluffer", label: "Bluffer", line: "Hack Study-Bot, blend in" },
+  { role: "factChecker", label: "Fact-Checker", line: "Verify once, stay hidden" },
+  { role: "random", label: "Random", line: "Surprise me" },
+];
 
 /** Room code from a share link like /?room=ABCD, if any. */
 function linkedRoom(): string | undefined {
@@ -9,39 +24,171 @@ function linkedRoom(): string | undefined {
   return code ? code.toUpperCase() : undefined;
 }
 
-export function MainMenu({ avatar, setAvatar }: { avatar: Avatar; setAvatar: (a: Avatar) => void }) {
-  const connected = useGame((s) => s.connected);
-  const error = useGame((s) => s.error);
-  const setMenuScreen = useGame((s) => s.setMenuScreen);
-  const roomFromLink = linkedRoom();
-  const ready = connected && avatar.name.trim().length > 0;
+interface MenuProps {
+  avatar: Avatar;
+  setAvatar: (a: Avatar) => void;
+}
+
+function Logo({ small }: { small?: boolean }) {
+  return (
+    <h1 className={`title ${small ? "small" : ""}`}>
+      Who Hacked
+      <br />
+      the Bot?
+    </h1>
+  );
+}
+
+function Back({ to }: { to: MenuScreen }) {
+  const go = useGame((s) => s.setMenuScreen);
+  return (
+    <button className="btn small back" onClick={() => go(to)}>
+      ◀ Back
+    </button>
+  );
+}
+
+function TitleScreen({ avatar }: { avatar: Avatar }) {
+  const go = useGame((s) => s.setMenuScreen);
+  const [leaving, setLeaving] = useState(false);
+  const leavingRef = useRef(false);
+  // Returning players with a saved name skip straight to choosing a mode.
+  // The title zooms away first, then the next card pops in.
+  const next = () => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    setLeaving(true);
+    // Study-Bot drops down while the title slides away; it comes back up on the menu.
+    sendBotDown();
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(() => go(linkedRoom() || !avatar.name.trim() ? "avatar" : "mode"), reduce ? 0 : BOT_EXIT_MS);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.repeat) next();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   return (
-    <div className="screen">
-      <div className="card">
-        <h1 className="title">
-          Who Hacked
-          <br />
-          the Bot?
-        </h1>
-        <p className="tagline">Study-Bot is always confident. Someone in class made it lie.</p>
-        <AvatarPicker avatar={avatar} onChange={setAvatar} />
-        {roomFromLink ? (
-          <button className="btn primary" disabled={!ready} onClick={() => socket.emit("lobby:join", { code: roomFromLink, ...avatar })}>
-            Join {roomFromLink}
-          </button>
-        ) : (
-          <>
-            <button className="btn primary" disabled={!ready} onClick={() => socket.emit("lobby:create", avatar)}>
-              Create Lobby
-            </button>
-            <button className="btn" disabled={!ready} onClick={() => setMenuScreen("join")}>
-              Join Friend
-            </button>
-          </>
-        )}
-        {error && <p className="error">{error.message}</p>}
-      </div>
+    <div className={`title-screen ${leaving ? "leaving" : ""}`} role="button" tabIndex={0} onClick={next} aria-label="Press anything to continue">
+      <span className="title-content">
+        <Logo />
+        <span className="tagline">Study-Bot is always confident. Someone in class made it lie.</span>
+        <span className="press-start">PRESS ANYTHING TO CONTINUE</span>
+      </span>
     </div>
+  );
+}
+
+function AvatarStep({ avatar, setAvatar }: MenuProps) {
+  const go = useGame((s) => s.setMenuScreen);
+  const connected = useGame((s) => s.connected);
+  const error = useGame((s) => s.error);
+  const room = linkedRoom();
+  const ready = avatar.name.trim().length > 0;
+
+  return (
+    <div className="card">
+      <h2 className="heading">Your student</h2>
+      <AvatarPicker avatar={avatar} onChange={setAvatar} />
+      {room ? (
+        <button className="btn primary" disabled={!ready || !connected} onClick={() => socket.emit("lobby:join", { code: room, ...avatar })}>
+          Join {room}
+        </button>
+      ) : (
+        <button className="btn primary" disabled={!ready} onClick={() => go("mode")}>
+          {ready ? "Next ▶" : "Type your name"}
+        </button>
+      )}
+      {error && <p className="error">{error.message}</p>}
+    </div>
+  );
+}
+
+function ModeSelect({ avatar }: { avatar: Avatar }) {
+  const go = useGame((s) => s.setMenuScreen);
+  return (
+    <div className="card">
+      <Logo small />
+      <button className="me-chip" onClick={() => go("avatar")} aria-label="Edit your student">
+        <AvatarPreview color={avatar.color} character={avatar.character} />
+        <span>
+          <b>{avatar.name}</b>
+          <small>Edit ✎</small>
+        </span>
+      </button>
+      <button className="mode vs" onClick={() => go("vs")}>
+        <b>VS</b>
+        <small>Play with friends · 4–5 players</small>
+      </button>
+      <button className="mode practice" onClick={() => go("practice")}>
+        <b>Practice</b>
+        <small>Play alone against 3 bots</small>
+      </button>
+    </div>
+  );
+}
+
+function VsMenu({ avatar }: { avatar: Avatar }) {
+  const go = useGame((s) => s.setMenuScreen);
+  const connected = useGame((s) => s.connected);
+  const error = useGame((s) => s.error);
+  return (
+    <div className="card">
+      <h2 className="heading">VS</h2>
+      <p className="menu-note">One friend creates a lobby and shares the code or link. Everyone else joins.</p>
+      <button className="btn primary" disabled={!connected} onClick={() => socket.emit("lobby:create", avatar)}>
+        Create Lobby
+      </button>
+      <button className="btn" disabled={!connected} onClick={() => go("join")}>
+        Join Friend
+      </button>
+      <Back to="mode" />
+      {error && <p className="error">{error.message}</p>}
+    </div>
+  );
+}
+
+function PracticeMenu({ avatar }: { avatar: Avatar }) {
+  const connected = useGame((s) => s.connected);
+  const error = useGame((s) => s.error);
+  return (
+    <div className="card">
+      <h2 className="heading">Practice</h2>
+      <p className="menu-note">You and 3 bots. Pick your role:</p>
+      <div className="role-grid">
+        {PRACTICE_ROLES.map((r) => (
+          <button
+            key={r.role}
+            className={`btn role-btn role-${r.role}`}
+            disabled={!connected}
+            onClick={() => socket.emit("practice:start", { ...avatar, role: r.role })}
+          >
+            <b>{r.label}</b>
+            <small>{r.line}</small>
+          </button>
+        ))}
+      </div>
+      <Back to="mode" />
+      {error && <p className="error">{error.message}</p>}
+    </div>
+  );
+}
+
+/** The menu step for the current screen (the Join screen lives in Join.tsx). */
+export function MainMenu({ avatar, setAvatar }: MenuProps) {
+  const screen = useGame((s) => s.menuScreen);
+  if (screen === "title") return <TitleScreen avatar={avatar} />;
+  const lines = MENU_LINES[screen === "join" ? "join" : screen];
+  return (
+    <MenuBackdrop lines={lines}>
+      {screen === "avatar" && <AvatarStep avatar={avatar} setAvatar={setAvatar} />}
+      {screen === "mode" && <ModeSelect avatar={avatar} />}
+      {screen === "vs" && <VsMenu avatar={avatar} />}
+      {screen === "practice" && <PracticeMenu avatar={avatar} />}
+    </MenuBackdrop>
   );
 }

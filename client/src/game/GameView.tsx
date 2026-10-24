@@ -2,6 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { PublicPlayer } from "@whtb/shared/types";
 import { FollowCamera } from "./FollowCamera";
+import { LIGHTING } from "./lighting";
 import { NearbyWatcher } from "./NearbyWatcher";
 import { Pieces3D } from "./Pieces3D";
 import { Player } from "./Player";
@@ -23,12 +24,12 @@ function Scene({ players, myId }: SceneProps) {
 
   return (
     <>
-      {/* Late afternoon after class: a low, warm sun from the west and a dimmer, peachy sky. */}
-      <color attach="background" args={["#e8a87c"]} />
-      <fog attach="fog" args={["#e8a87c", 22, 44]} />
-      <hemisphereLight args={["#ffd9b0", "#6d5677", 1.05]} />
-      <directionalLight position={[-14, 9, 6]} intensity={1.15} color="#ffb070" />
-      <ambientLight intensity={0.15} color="#ffcfa0" />
+      {/* Early-afternoon daylight by default (game/lighting.ts). */}
+      <color attach="background" args={[LIGHTING.sky]} />
+      <fog attach="fog" args={[LIGHTING.sky, LIGHTING.fogNear, LIGHTING.fogFar]} />
+      <hemisphereLight args={[LIGHTING.hemiSky, LIGHTING.hemiGround, LIGHTING.hemiIntensity]} />
+      <directionalLight position={LIGHTING.sunPosition} intensity={LIGHTING.sunIntensity} color={LIGHTING.sunColor} />
+      <ambientLight intensity={LIGHTING.ambientIntensity} color={LIGHTING.ambientColor} />
       <SchoolMap />
       <Player color={myColor} character={myCharacter} body={me} isYou ghost={!players[myIndex]?.alive} />
       {players

@@ -1,6 +1,7 @@
 import type { Avatar } from "@whtb/shared/avatars";
 import { useState } from "react";
 import { socket } from "../net/socket";
+import { MENU_LINES, MenuBackdrop } from "./MenuBackdrop";
 import { useGame } from "../net/store";
 
 export function Join({ avatar }: { avatar: Avatar }) {
@@ -10,7 +11,7 @@ export function Join({ avatar }: { avatar: Avatar }) {
   const setMenuScreen = useGame((s) => s.setMenuScreen);
 
   return (
-    <div className="screen">
+    <MenuBackdrop lines={MENU_LINES.join}>
       <form
         className="card"
         onSubmit={(e) => {
@@ -36,11 +37,11 @@ export function Join({ avatar }: { avatar: Avatar }) {
         <button className="btn primary" type="submit" disabled={!connected || code.length !== 4}>
           Join
         </button>
-        <button className="btn" type="button" onClick={() => setMenuScreen("menu")}>
+        <button className="btn" type="button" onClick={() => setMenuScreen("vs")}>
           Back
         </button>
         {error && <p className="error">{error.message}</p>}
       </form>
-    </div>
+    </MenuBackdrop>
   );
 }

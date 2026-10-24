@@ -163,6 +163,13 @@ PRD ref: `prd.md > Question Pieces`. Added in slice 3b, reworked into a shared p
 - Messages: everyone gets `pieces:state` (pieces on the floor: id and position, **no text**); the holder gets `game:bag` (their pieces with text).
 - Client: `game/Pieces3D.tsx` (paper scraps, auto-pickup by walking over), a bag and class board in the HUD, and `TerminalPanel` with a pool to pick 3 from (or "Let Study-Bot arrange it"); the answer step shows the 3 real pieces under the question.
 
+### Practice Mode & Bots (server + client)
+PRD ref: `prd.md > Practice Mode`. Added during `5-build` (slice 5c).
+- `practice:start {name, character, color, role | "random"}` creates a room with the player and 3 bots, then starts it at once. The player's chosen role is fixed; the bots get the rest.
+- `shared/nav.ts`: a walkable grid built from the same obstacles as collision, and A* paths across it, so bots never get stuck on walls.
+- `server/src/bots.ts`: one `BotController` per practice room, ticked with the game loop. Each bot wanders to pieces, picks them up, walks to the human's terminal to help pool, solves full questions (trusting Study-Bot about 70% of the time), hacks if it is the Bluffer, may call a meeting after a strike, and in meetings chats canned lines and votes for whoever was seen near a hacked terminal. Bots act through the same `GameRoom` methods as players, so the rules can't be bent.
+- Bots are server-side players with no socket. A practice room is deleted when its human leaves.
+
 ### Meeting, Chat & Vote (client)
 PRD ref: `prd.md > Meetings and Voting`.
 - `screens/Meeting.tsx`: who called it, the chat log and input (max 140 characters per message), a player list with vote buttons and a Skip button, a 90-second countdown, and who has voted (not *for whom*).
@@ -185,6 +192,7 @@ All typed in `shared/events.ts`. "Private" means sent only to that player's sock
 | C→S | `lobby:create` | `{name, character, color}` | Creator becomes host |
 | C→S | `lobby:join` | `{code, name, character, color}` | |
 | C→S | `lobby:start` | — | Host only, 4–5 players |
+| C→S | `practice:start` | `{name, character, color, role}` | Solo game with 3 bots |
 | C→S | `move` | `{x, z, heading}` | ~12/s, ignored unless `playing` |
 | C→S | `piece:pickup` | `{pieceId}` | Within reach; Bluffer max 2 held |
 | C→S | `terminal:open` | `{terminalId}` | Within reach; pool of nearby classmates must hold 3+ pieces |
@@ -375,6 +383,8 @@ New folder/                      # project root (the hackathon repo)
 **Learner's useful unknown:** *"I never create 3d in react."*
 - **Clarified:** `<Canvas>` and JSX for 3D objects; per-frame motion through `useFrame` and refs, not React state; `useGLTF` with `<Suspense>` for models.
 - **Agreed check:** build step 1 is a small 3D test with one room, the bean, the fixed follow camera, and joystick plus WASD. **Evidence:** smooth movement in a desktop window and on a phone browser before any multiplayer code.
+
+- **No AI model at runtime for the hackathon** (learner, during `5-build`): Study-Bot and the practice bots are pre-written and rule-based; real Claude features are in `prd.md > Possible Later Enhancements` with cost estimates. The README must say plainly that Study-Bot is simulated.
 
 **Open (none block approval):**
 - Exact package versions, verified with `npm view` in build step 1.

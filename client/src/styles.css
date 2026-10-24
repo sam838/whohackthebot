@@ -93,16 +93,19 @@ body {
 }
 
 /* Menu, join, and lobby screens */
+/* Menus scroll when they're taller than the window (e.g. a laptop screen);
+   margin: auto on the card centers it without cutting off the top. */
 .screen {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
   padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom))
     max(16px, env(safe-area-inset-left));
   background: radial-gradient(circle at 30% 20%, #4b3d7a 0%, var(--ink) 70%);
 }
 
 .card {
+  margin: auto;
   width: min(380px, 100%);
   background: var(--paper);
   border: 4px solid var(--ink);
@@ -839,6 +842,436 @@ body {
   font-weight: 700;
 }
 
+/* Menus never show a scrollbar; each step is short enough to fit. */
+.screen {
+  scrollbar-width: none;
+}
+
+.screen::-webkit-scrollbar {
+  display: none;
+}
+
+/* Title screen: Study-Bot wallpaper (TitleBackground) with the logo column on top. */
+.menu-wallpaper {
+  position: fixed;
+  inset: 0;
+  background: #ffcf5a;
+}
+
+.title-screen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  font-family: var(--body);
+  overflow: hidden;
+}
+
+.title-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Wide screens: logo on the left half, Study-Bot on the right. */
+.title-content {
+  position: absolute;
+  inset: 0 43% 0 9%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  text-align: center;
+}
+
+/* Tall screens (phones): logo on top, Study-Bot below. */
+@media (max-aspect-ratio: 11 / 10) {
+  .title-content {
+    inset: 0 0 45% 0;
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+.title-screen .title {
+  font-size: clamp(44px, 6.4vw, 96px);
+  color: #ffd84d;
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 7px 0 var(--ink);
+}
+
+.title-screen .tagline {
+  max-width: 26ch;
+  font-size: clamp(15px, 1.7vw, 21px);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.press-start {
+  font: 800 clamp(15px, 1.7vw, 22px) var(--display);
+  letter-spacing: 0.1em;
+  color: #fff;
+  background: var(--accent);
+  border: 4px solid #fff;
+  border-radius: 999px;
+  padding: 8px 24px;
+  box-shadow: 0 5px 0 var(--ink);
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(-4px) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press-start {
+    animation: none;
+  }
+}
+
+.title-screen:focus-visible .press-start {
+  outline: 4px solid var(--studybot);
+  outline-offset: 4px;
+}
+
+.title.small {
+  font-size: 34px;
+  color: #ffd84d;
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 var(--ink);
+}
+
+/* Menus share the title's look: sunburst + Study-Bot behind the card. */
+.screen.themed {
+  position: relative;
+  background: transparent;
+}
+
+.screen.themed .card {
+  position: relative;
+  box-shadow: 0 8px 0 var(--ink);
+}
+
+/* Wide screens: card on the left, Study-Bot (and its bubble) on the right. */
+@media (min-aspect-ratio: 11 / 10) {
+  .screen.themed .card {
+    margin: auto auto auto max(16px, 15vw);
+  }
+}
+
+/* Mode select */
+.me-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 6px 12px 6px 6px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+}
+
+.me-chip .avatar-preview {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-width: 2px;
+  border-radius: 12px;
+}
+
+.me-chip span {
+  display: grid;
+  font-size: 18px;
+}
+
+.me-chip small {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.mode {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: 4px solid var(--ink);
+  border-radius: 18px;
+  padding: 12px 16px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--ink);
+  color: #fff;
+}
+
+.mode b {
+  font: 800 34px/1 var(--display);
+}
+
+.mode small {
+  font: 700 14px var(--body);
+  opacity: 0.9;
+}
+
+.mode.vs {
+  background: var(--accent);
+}
+
+.mode.practice {
+  background: var(--progress);
+}
+
+.mode:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.mode:focus-visible,
+.me-chip:focus-visible {
+  outline: 3px solid var(--studybot);
+  outline-offset: 2px;
+}
+
+.menu-note {
+  margin: -4px 0 2px;
+  font-size: 15px;
+}
+
+.btn.back {
+  justify-self: start;
+}
+
+/* Transitions: cards pop in, the title zooms away, the game opens with school doors. */
+.card {
+  animation: slide-in 0.6s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-48px) scale(0.96);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* Title: the logo drops in, the tagline fades in, the button pops. */
+.title-screen .title {
+  animation: drop-in 0.95s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+.title-screen .tagline {
+  animation: fade-up 0.6s ease 0.45s both;
+}
+
+.title-screen .press-start {
+  animation:
+    pop-in 0.55s cubic-bezier(0.2, 1.6, 0.4, 1) 0.75s both,
+    bob 1.4s ease-in-out 1.3s infinite;
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.8);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Leaving the title: the logo column slides away quickly while the menu card slides in. */
+.title-screen .title-content {
+  transition:
+    transform 0.5s ease-in,
+    opacity 0.5s ease-in;
+}
+
+.title-screen.leaving .title-content {
+  transform: translateX(-90px) scale(0.95);
+  opacity: 0;
+}
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50.5%;
+  background: repeating-linear-gradient(90deg, #ffd84d 0 46px, #ffcf3a 46px 50px);
+  border: 6px solid var(--ink);
+  animation: door-open 1s cubic-bezier(0.6, 0, 0.3, 1) 1.5s forwards;
+}
+
+.door.left {
+  left: 0;
+  --open: -105%;
+}
+
+.door.right {
+  right: 0;
+  --open: 105%;
+}
+
+.door-window {
+  position: absolute;
+  top: 18%;
+  width: 34%;
+  height: 22%;
+  background: #bfe3f2;
+  border: 6px solid var(--ink);
+  border-radius: 12px;
+}
+
+.door.left .door-window {
+  right: 14%;
+}
+
+.door.right .door-window {
+  left: 14%;
+}
+
+@keyframes door-open {
+  to {
+    transform: translateX(var(--open));
+  }
+}
+
+.intro-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+  color: var(--ink);
+  animation: intro-text 1.6s ease both;
+}
+
+.intro-text b {
+  font: 800 clamp(44px, 8vw, 96px) / 1 var(--display);
+  color: #fff;
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 6px 0 var(--ink);
+}
+
+.intro-text span:last-child {
+  font: 800 clamp(18px, 2.6vw, 30px) var(--display);
+  background: #fff;
+  border: 4px solid var(--ink);
+  border-radius: 999px;
+  padding: 4px 20px;
+}
+
+.bell {
+  font-size: clamp(54px, 8vw, 96px);
+  animation: ring 0.5s ease-in-out 3;
+  transform-origin: 50% 10%;
+}
+
+@keyframes ring {
+  25% {
+    transform: rotate(18deg);
+  }
+  75% {
+    transform: rotate(-18deg);
+  }
+}
+
+@keyframes intro-text {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  26%,
+  82% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .bell,
+  .intro-text,
+  .title-screen .title,
+  .title-screen .tagline,
+  .title-screen .press-start {
+    animation: none;
+  }
+  .door {
+    animation-duration: 0.01s;
+  }
+}
+
+/* Practice role picker */
+.role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.role-btn {
+  display: grid;
+  gap: 2px;
+  font-size: 18px;
+  padding: 8px;
+}
+
+.role-btn small {
+  font: 600 12px var(--body);
+  opacity: 0.85;
+}
+
+.role-btn.role-student {
+  background: var(--accent);
+  color: #fff;
+}
+
+.role-btn.role-bluffer {
+  background: var(--strike);
+  color: #fff;
+}
+
+.role-btn.role-factChecker {
+  background: var(--progress);
+  color: #fff;
+}
+
 /* Avatar setup */
 .avatar-picker {
   display: grid;
@@ -853,7 +1286,7 @@ body {
 }
 
 .avatar-preview {
-  height: 170px;
+  height: clamp(110px, 20vh, 170px);
   min-width: 0;
   border-radius: 16px;
   background: radial-gradient(circle at 50% 70%, #fff3c4 0%, #f3dfa2 70%);

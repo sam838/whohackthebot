@@ -89,6 +89,8 @@ export class GameRoom {
   private phaseEndsAt = 0;
   phase: GamePhase = "playing";
   meetingCallerId: string | undefined;
+  /** Terminals where a trusted lie caused a strike, in order (practice bots use this as a clue). */
+  readonly strikeTerminals: string[] = [];
   strikes = 0;
   result: WinResult | undefined;
 
@@ -98,8 +100,9 @@ export class GameRoom {
     private positionOf: (playerId: string) => Point | undefined,
     private random: Random = Math.random,
     private now: () => number = Date.now,
+    fixedRoles?: ReadonlyMap<string, Role>,
   ) {
-    this.roles = assignRoles(playerIds, random);
+    this.roles = assignRoles(playerIds, random, fixedRoles);
     this.alive = new Set(playerIds);
     playerIds.forEach((id) => this.meetingCalls.set(id, MEETING_CALLS_PER_PLAYER));
     const classmates = playerIds.length - 1;
@@ -405,11 +408,46 @@ export class GameRoom {
       holders.forEach((h) => this.sendBag(h));
     } else if (outcome === "strike") {
       this.strikes++;
+      this.strikeTerminals.push(q.terminalId);
     }
     // Anything but correct: the pieces simply stay in their owners' bags.
     this.send.toPlayer(playerId, "terminal:result", { outcome });
     this.send.publicChanged();
     this.checkWin();
+  }
+
+  // --- Read-only views for practice bots (server/src/bots.ts) ---
+
+  floorPieces(): PieceInfo[] {
+    return [...this.pieces.values()].filter((p) => !p.used && !p.holderId).map((p) => ({ id: p.id, x: p.home.x, z: p.home.z }));
+  }
+
+  bagIds(playerId: string): string[] {
+    return this.bagOf(playerId).map((p) => p.id);
+  }
+
+  /** A class question whose 3 pieces are all among these ids, if any. */
+  fullQuestionIn(ids: string[]): Question | undefined {
+    return this.questions.find((q) => !this.solved.has(q.id) && this.pieceIdsOf(q).every((id) => ids.includes(id)));
+  }
+
+  hasOpenTerminal(playerId: string): boolean {
+    return this.open.has(playerId);
+  }
+
+  hackReady(): boolean {
+    return this.now() >= this.hackReadyAt;
+  }
+
+  hasVoted(playerId: string): boolean {
+    return this.votes.has(playerId);
+  }
+
+  /** A bot answers its open question: trusting Study-Bot's pick, or checking and picking right. */
+  botAnswer(playerId: string, trust: boolean): void {
+    const q = this.open.get(playerId);
+    if (!q || q.stage !== "answer") return;
+    this.answer(playerId, trust ? q.botPick : q.correct);
   }
 
   /** Leave the terminal without answering: no strike, no progress, pieces stay put. */

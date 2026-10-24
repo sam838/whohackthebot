@@ -17,6 +17,8 @@ export interface ServerPlayer {
   color: string;
   character: string;
   position: PlayerPosition;
+  /** A practice bot: server-side only, no socket. */
+  isBot?: boolean;
 }
 
 /** What a player chose in Avatar Setup. Bad values fall back to defaults. */
@@ -33,6 +35,8 @@ export interface Room {
   players: Map<string, ServerPlayer>;
   /** Set when a position changed since the last broadcast. */
   positionsDirty: boolean;
+  /** Practice room: one human against bots. */
+  practice?: boolean;
   /** The referee, once the game has started. */
   game?: GameRoom;
 }
@@ -104,6 +108,25 @@ export class RoomManager {
     return { ok: true, value: room };
   }
 
+  /**
+   * A practice room: this player plus bots, already started. Bots get names,
+   * characters, and colors of their own.
+   */
+  createPractice(playerId: string, avatar: AvatarChoice, botCount: number): Result<Room> {
+    const r = this.create(playerId, avatar);
+    if (!r.ok) return r;
+    const room = r.value;
+    room.practice = true;
+    const names = ["Rina", "Dimas", "Kevin", "Sari", "Budi"];
+    const characters = ["male-b", "female-c", "male-d", "female-e", "male-f"];
+    for (let i = 0; i < botCount; i++) {
+      const id = `bot-${room.code}-${i}`;
+      this.addPlayer(room, id, `${names[i]} (bot)`, { name: names[i], character: characters[i] });
+      room.players.get(id)!.isBot = true;
+    }
+    return this.start(playerId);
+  }
+
   /** Removes a player from their room. Returns the room if anyone is left in it. */
   leave(playerId: string): Room | undefined {
     const code = this.roomOfPlayer.get(playerId);
@@ -112,7 +135,10 @@ export class RoomManager {
     const room = this.rooms.get(code);
     if (!room) return undefined;
     room.players.delete(playerId);
-    if (room.players.size === 0) {
+    // A practice room is just bots once its human leaves, so it goes away.
+    const onlyBots = [...room.players.values()].every((p) => p.isBot);
+    if (room.players.size === 0 || onlyBots) {
+      for (const id of room.players.keys()) this.roomOfPlayer.delete(id);
       this.rooms.delete(code);
       return undefined;
     }

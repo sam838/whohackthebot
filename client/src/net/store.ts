@@ -14,7 +14,9 @@ import { create } from "zustand";
 import { applyPositions, localPlayer } from "../game/positions";
 import { socket } from "./socket";
 
-export type Screen = "menu" | "join" | "lobby" | "playing";
+/** Menu steps before a game: title → your student → mode → VS or Practice (→ join). */
+export type MenuScreen = "title" | "avatar" | "mode" | "vs" | "practice" | "join";
+export type Screen = MenuScreen | "lobby" | "playing";
 
 /** A question open on this player's screen. Times are local (performance.now()). */
 export interface OpenQuestion extends TerminalQuestion {
@@ -44,7 +46,7 @@ interface GameStore {
   notice: string | undefined;
   lobby: LobbyState | undefined;
   game: GameStatePublic | undefined;
-  menuScreen: "menu" | "join";
+  menuScreen: MenuScreen;
   role: Role | undefined;
   /** Pieces you carry, with their text. */
   bag: ArrangeCard[];
@@ -64,7 +66,9 @@ interface GameStore {
   voteResult: VoteResult | undefined;
   /** Who this player voted for in the current meeting (null = skip). */
   myVote: string | null | undefined;
-  setMenuScreen: (s: "menu" | "join") => void;
+  /** When the current game appeared on screen (drives the intro animation). */
+  introAt: number | undefined;
+  setMenuScreen: (s: MenuScreen) => void;
   clearError: () => void;
 }
 
@@ -84,6 +88,7 @@ const freshGame = {
   chat: [],
   voteResult: undefined,
   myVote: undefined,
+  introAt: undefined,
 };
 
 export const useGame = create<GameStore>((set) => ({
@@ -92,7 +97,7 @@ export const useGame = create<GameStore>((set) => ({
   error: undefined,
   lobby: undefined,
   game: undefined,
-  menuScreen: "menu",
+  menuScreen: "title",
   ...freshGame,
   setMenuScreen: (menuScreen) => set({ menuScreen, error: undefined }),
   clearError: () => set({ error: undefined }),
@@ -111,7 +116,7 @@ export function amAlive(s: Pick<GameStore, "game" | "myId">): boolean {
 /** Leave the room and go back to the main menu. */
 export function leaveRoom() {
   socket.emit("room:leave");
-  useGame.setState({ lobby: undefined, game: undefined, menuScreen: "menu", error: undefined, ...freshGame });
+  useGame.setState({ lobby: undefined, game: undefined, menuScreen: "mode", error: undefined, ...freshGame });
   // Drop a share-link room code so the menu shows Create / Join again.
   if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
 }
@@ -144,6 +149,8 @@ socket.on("disconnect", () =>
 socket.on("lobby:state", (lobby) => useGame.setState({ lobby, game: undefined, error: undefined, ...freshGame }));
 socket.on("game:state", (game) => {
   const before = useGame.getState().game?.phase;
+  // A brand-new game: play the school-bell intro (screens/GameIntro.tsx).
+  if (!useGame.getState().game) useGame.setState({ introAt: performance.now() });
   if (game.phase === "meeting" && before !== "meeting") {
     // A meeting starts: terminals close and a fresh discussion begins.
     useGame.setState({ chat: [], myVote: undefined, voteResult: undefined, arrange: undefined, question: undefined });

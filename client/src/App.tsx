@@ -4,6 +4,9 @@ import { loadAvatar, saveAvatar } from "./avatar/avatarStorage";
 import { GameView } from "./game/GameView";
 import { attachKeyboard } from "./game/input";
 import { ActionButton } from "./hud/ActionButton";
+import { GameIntro } from "./screens/GameIntro";
+import { MENU_LINES } from "./screens/MenuBackdrop";
+import { TitleBackground } from "./screens/TitleBackground";
 import { GameOver } from "./screens/GameOver";
 import { Meeting } from "./screens/Meeting";
 import { VoteResultScreen } from "./screens/VoteResult";
@@ -70,9 +73,20 @@ export function App() {
   useEffect(() => attachKeyboard(), []);
   useUseKey();
 
+  const onMenus = screen !== "playing";
+  const lines = screen === "title" || screen === "playing" ? undefined : MENU_LINES[screen];
+
   return (
     <>
-      {screen === "menu" && <MainMenu avatar={avatar} setAvatar={setAvatar} />}
+      {/* One wallpaper behind the title and every menu, so it never restarts between screens. */}
+      {onMenus && (
+        <div className="menu-wallpaper">
+          <TitleBackground line1={lines?.[0]} line2={lines?.[1]} botOnNarrow={screen === "title"} />
+        </div>
+      )}
+      {(screen === "title" || screen === "avatar" || screen === "mode" || screen === "vs" || screen === "practice") && (
+        <MainMenu avatar={avatar} setAvatar={setAvatar} />
+      )}
       {screen === "join" && <Join avatar={avatar} />}
       {screen === "lobby" && lobby && <Lobby lobby={lobby} />}
       {screen === "playing" && game && myId && (
@@ -91,6 +105,7 @@ export function App() {
           {game.phase === "voteResult" && <VoteResultScreen />}
           <GameOver />
           <Toast />
+          <GameIntro />
         </>
       )}
       <ConnectionBanner />

@@ -14,14 +14,18 @@ export function shuffle<T>(items: readonly T[], random: Random): T[] {
   return out;
 }
 
-/** Exactly one Bluffer, exactly one Fact-Checker, everyone else a Student. */
-export function assignRoles(playerIds: readonly string[], random: Random): Map<string, Role> {
-  const [bluffer, factChecker, ...students] = shuffle(playerIds, random);
-  const roles = new Map<string, Role>([
-    [bluffer, "bluffer"],
-    [factChecker, "factChecker"],
-  ]);
-  for (const id of students) roles.set(id, "student");
+/**
+ * Exactly one Bluffer, exactly one Fact-Checker, everyone else a Student.
+ * `fixed` pins some players' roles (practice mode lets you choose yours).
+ */
+export function assignRoles(playerIds: readonly string[], random: Random, fixed?: ReadonlyMap<string, Role>): Map<string, Role> {
+  const roles = new Map<string, Role>(fixed ?? []);
+  const free = shuffle(playerIds.filter((id) => !roles.has(id)), random);
+  const taken = new Set(roles.values());
+  for (const special of ["bluffer", "factChecker"] as const) {
+    if (!taken.has(special) && free.length) roles.set(free.shift()!, special);
+  }
+  for (const id of free) roles.set(id, "student");
   return roles;
 }
 

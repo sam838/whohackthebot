@@ -34,7 +34,11 @@ Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
 
 | Screen | Purpose |
 |---|---|
-| **Main Menu** | Avatar preview and setup (character, color, name), Create Lobby / Join Friend |
+| **Title** | Logo, tagline, blinking PRESS START (any key, click, or tap) |
+| **Your student** | Avatar setup: character, color, name (skipped for returning players) |
+| **Mode select** | **VS** (play with friends) or **Practice** (vs 3 bots), plus your avatar to edit |
+| **VS menu** | Create Lobby / Join Friend |
+| **Practice menu** | Pick a role: Student, Bluffer, Fact-Checker, Random |
 | **Join** | Enter room code and name (skipped when arriving via share link, apart from the name) |
 | **Lobby** | Room code, share link, player list, Start (host only) |
 | **Role Reveal** | Classroom → book opens → character picture, role name, typed quick facts |
@@ -52,13 +56,24 @@ Source: `scope.md > Inspiration & Identity`.
 - **Common school, cartoon style.** Bright and friendly, recognizable as an everyday school (classroom, library, lab, canteen).
 - **Art style reference: Super Sus.** Cute, chunky cartoon characters with a soft, slightly 3D look, in bright colors. Version one is **2.5D**: real 3D models seen from a **fixed camera angle above that follows the player** (like Mobile Legends and Super Sus). The player never rotates the camera. Inspired by the style only: no Super Sus assets or characters.
 - **Interior design (added during build):** each room has its own floor, two-tone walls, door signs, and room-specific details: a chalkboard reading "Today's lesson: trust, but verify", hallway lockers, a library rug and lamps, a lab periodic table and flasks, and a canteen *kantin* menu (Nasi Goreng, Mie Ayam, Es Teh, priced in USD). Built from CC0 models and code-drawn pictures.
-- **Lighting: warm, dim late afternoon** (learner: "not too bright") — a low orange sun, a peach sky, and windows glowing with sunset light.
+- **Lighting: early-afternoon daylight** — bright, clean light with a slightly warm tint and a pale blue sky, matching the sunny title. Chosen after comparing noon, early afternoon, and late afternoon (first version was "too bright"; late afternoon felt moody next to the bright title).
 - **Do not copy Among Us.** The school setting and the book role reveal are the game's own identity.
 - **Role reveal:** opening a book in class; quick facts appear with a **typing animation and typing sound**, like Study-Bot writing.
 - Study-Bot should feel like a confident chatbot (chat-bubble style answers).
 - Must not feel like an "educational game." No lessons, no quizzes that look like school tests.
 
 ## Features and Behavior
+
+### Practice Mode
+*Added during `5-build` after Devpost's live review session showed judges skip apps they can't try alone. Learner: "create practice mode with bots and the player can change what role they want."*
+- As a judge or a player without friends online, I want to play a full game alone against bots so I can try every part of the game in one window.
+  - [ ] The Main Menu has a **Practice** button next to Create Lobby and Join Friend.
+  - [ ] Before starting, I choose my role: Student, Bluffer, Fact-Checker, or Random.
+  - [ ] The game starts right away with me and 3 bots (no lobby, no room code); the bots get the other roles.
+  - [ ] Bots walk the school, pick up pieces, come to help at the terminal I'm using, and solve questions (they sometimes trust Study-Bot blindly, like real players).
+  - [ ] A Bluffer bot hacks terminals. After a strike, a bot may call a meeting.
+  - [ ] In meetings, bots chat short lines (where they were, who they saw near the hacked terminal) and vote based on who was near it; the Bluffer bot lies.
+  - [ ] Every win and lose condition works the same as a real game; Back to menu ends practice.
 
 ### Avatar Setup
 *Added during `4-spec` at the learner's request.*
@@ -177,6 +192,8 @@ Source: `scope.md > The Unique Kernel`.
 - **The Bluffer handles pieces exactly like everyone (max 2)** — the learner spotted that if the Bluffer's pieces never pool (or they can't pick any up), anyone could "prove it at the terminal" and the Bluffer would always lose. Catching them now relies on behavior and stories, not a mechanical test. Their answers never cause strikes; a correct one still helps the class.
 - **Leavers' pieces go home** — a classmate who leaves returns their pieces to where they were found.
 - **Verify stays TRUE/FALSE** — reconfirmed after slice 3b.
+- **Practice mode with bots, role of your choice** — judges and solo players can try the full game in one window; reverses the earlier "no filler bots / no CPU opponents" decision for practice only. Multiplayer with friends stays the main mode.
+- **Study-Bot stays simulated for the hackathon** — "can we put the real AI later": pre-written answers keep the lie controlled, free, and reliable for judges; real AI moves to Later with a cost estimate.
 - **Claims aren't verified** — anyone can claim a role, and nobody has to believe it.
 
 ## Assumptions to Confirm
@@ -207,7 +224,6 @@ Drafted by the agent as placeholders; the learner accepted them as drafted at ap
 ## Deferred From the POC
 - **Public matchmaking** — too long to build; friends join by code or link instead.
 - **Play Store / App Store release** — store accounts and review don't fit the hackathon; phone browser works now.
-- **Simple filler bots** — not needed; 4 browser windows cover testing and the demo.
 - **Voice chat** — text chat works for the demo.
 
 ## Possible Later Enhancements
@@ -218,13 +234,13 @@ Drafted by the agent as placeholders; the learner accepted them as drafted at ap
 - Multiple maps.
 - Full 3D with a free camera, possibly a Roblox version.
 - More special roles.
-- AI-generated questions and lies (instead of pre-written).
+- **Real AI (Claude) in the game** — decided during `5-build` to keep the hackathon version simulated and add real AI later. Options, cheapest first: Study-Bot explanations generated once and saved (16 texts, under $0.10, no delay); live bot meeting chat; AI-generated questions and lies. Estimated live cost ~20 calls per game: Claude Haiku 5.5 ≈ $0.0015/game, Claude Sonnet 5.5 ≈ $0.03, Claude Opus 5.5 ≈ $0.10. Needs a server-side key, a Console spend limit, per-room call limits, and a fallback to pre-written text.
 - A real playtest with friends to tune balance.
 
 ## Non-Goals
 - **Not an educational quiz app** — no lessons, scores, or teacher dashboards.
 - **No accounts, profiles, or saved history** — every game is fresh.
-- **No CPU opponents** — the fun is accusing real friends.
+- **No smart AI opponents** — practice bots follow simple rules; the real fun is still accusing friends.
 - **No copying Among Us visuals or reveal** — school theme is the identity.
 - **No emotional support or news topics** — questions are school subjects and trivia.
 

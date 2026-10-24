@@ -2,7 +2,8 @@ import { MIN_PLAYERS } from "@whtb/shared/constants";
 import type { LobbyState } from "@whtb/shared/types";
 import { useRef, useState } from "react";
 import { socket } from "../net/socket";
-import { useGame } from "../net/store";
+import { leaveRoom, useGame } from "../net/store";
+import { MENU_LINES, MenuBackdrop } from "./MenuBackdrop";
 
 export function Lobby({ lobby }: { lobby: LobbyState }) {
   const myId = useGame((s) => s.myId);
@@ -24,7 +25,7 @@ export function Lobby({ lobby }: { lobby: LobbyState }) {
   }
 
   return (
-    <div className="screen">
+    <MenuBackdrop lines={MENU_LINES.lobby}>
       <div className="card">
         <p className="label">Room code</p>
         <p className="room-code">{lobby.code}</p>
@@ -54,8 +55,11 @@ export function Lobby({ lobby }: { lobby: LobbyState }) {
         ) : (
           <p className="waiting">Waiting for the host to start…</p>
         )}
+        <button className="btn small leave" onClick={leaveRoom}>
+          Leave lobby
+        </button>
         {error && <p className="error">{error.message}</p>}
       </div>
-    </div>
+    </MenuBackdrop>
   );
 }
