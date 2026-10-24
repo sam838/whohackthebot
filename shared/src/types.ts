@@ -1,6 +1,6 @@
 // Shapes that travel between server and client.
 
-export type Phase = "lobby" | "playing" | "meeting" | "voteResult" | "over";
+export type Phase = "lobby" | "reveal" | "playing" | "meeting" | "voteResult" | "over";
 
 export type Role = "student" | "bluffer" | "factChecker";
 
@@ -30,10 +30,12 @@ export interface GameStatePublic {
   goal: number;
   /** Who called the current meeting. */
   meetingCallerId?: string;
-  /** Milliseconds left in the meeting or vote-result phase. */
+  /** Milliseconds left in the role reveal, meeting, or vote-result phase. */
   phaseMsLeft?: number;
   /** Who has voted in this meeting (not for whom). */
   votedIds: string[];
+  /** Who has closed their role book and is ready for class (role reveal only). */
+  readyIds: string[];
   /** Meetings each player can still call. */
   meetingCallsLeft: Record<string, number>;
 }

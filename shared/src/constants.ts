@@ -19,7 +19,8 @@ export const MEETING_SECONDS = 90;
 export const VOTE_RESULT_SECONDS = 6;
 export const CHAT_MAX_LENGTH = 140;
 export const MEETING_CALLS_PER_PLAYER = 1;
-export const REVEAL_SECONDS = 8;
+/** The role reveal ends when everyone is ready, or after this long at most. */
+export const REVEAL_SECONDS = 15;
 
 /** Walking speed in world units per second. */
 export const WALK_SPEED = 4;

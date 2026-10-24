@@ -5,6 +5,7 @@ import { GameView } from "./game/GameView";
 import { attachKeyboard } from "./game/input";
 import { ActionButton } from "./hud/ActionButton";
 import { GameIntro } from "./screens/GameIntro";
+import { RoleReveal } from "./screens/RoleReveal";
 import { MENU_LINES } from "./screens/MenuBackdrop";
 import { TitleBackground } from "./screens/TitleBackground";
 import { GameOver } from "./screens/GameOver";
@@ -105,6 +106,7 @@ export function App() {
           {game.phase === "voteResult" && <VoteResultScreen />}
           <GameOver />
           <Toast />
+          <RoleReveal />
           <GameIntro />
         </>
       )}

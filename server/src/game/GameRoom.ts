@@ -23,7 +23,7 @@ import type { AnswerOutcome, ArrangeCard, ErrorCode, GameOver, PieceInfo, Role }
 import { assignRoles, checkWinner, shuffle, tallyVotes, type Random, type WinResult } from "./rules";
 
 /** Where the game is between start and game over. */
-export type GamePhase = "playing" | "meeting" | "voteResult";
+export type GamePhase = "reveal" | "playing" | "meeting" | "voteResult";
 
 type Event = keyof ServerToClientEvents;
 type Payload<E extends Event> = Parameters<ServerToClientEvents[E]>[0];
@@ -86,6 +86,8 @@ export class GameRoom {
   private verifyUsed = false;
   private meetingCalls = new Map<string, number>();
   private votes = new Map<string, string | null>();
+  /** Who has closed their role book (role reveal only). */
+  private ready = new Set<string>();
   private phaseEndsAt = 0;
   phase: GamePhase = "playing";
   meetingCallerId: string | undefined;
@@ -156,6 +158,10 @@ export class GameRoom {
     return this.phase === "meeting" ? [...this.votes.keys()] : [];
   }
 
+  readyIds(): string[] {
+    return this.phase === "reveal" ? [...this.ready] : [];
+  }
+
   meetingCallsLeft(): Record<string, number> {
     return Object.fromEntries(this.meetingCalls);
   }
@@ -197,6 +203,7 @@ export class GameRoom {
   /** Terminal and piece actions only happen while everyone is walking around. */
   private requirePlaying(playerId: string): Role {
     const role = this.requireLiving(playerId);
+    if (this.phase === "reveal") throw new ActionError("NOT_ALLOWED", "Class hasn't started yet.");
     if (this.phase !== "playing") throw new ActionError("NOT_ALLOWED", "Not during a meeting.");
     return role;
   }
@@ -500,6 +507,35 @@ export class GameRoom {
     this.send.publicChanged();
   }
 
+  // --- Role reveal: everyone reads their book before class starts ---
+
+  /** Start the game with the role books open. Practice bots are ready at once. */
+  beginReveal(ms: number, readyIds: string[] = []): void {
+    this.phase = "reveal";
+    this.phaseEndsAt = this.now() + ms;
+    this.ready = new Set(readyIds.filter((id) => this.alive.has(id)));
+    this.endRevealIfAllReady();
+  }
+
+  /** A player closed their book. Class starts when everyone has. */
+  markReady(playerId: string): void {
+    this.requireLiving(playerId);
+    if (this.phase !== "reveal") return;
+    this.ready.add(playerId);
+    this.send.publicChanged();
+    this.endRevealIfAllReady();
+  }
+
+  private endRevealIfAllReady(): void {
+    if (this.phase === "reveal" && [...this.alive].every((id) => this.ready.has(id))) this.endReveal();
+  }
+
+  private endReveal(): void {
+    this.phase = "playing";
+    this.ready.clear();
+    this.send.publicChanged();
+  }
+
   /** After the result has been on screen: game over, or back to class. */
   private endVoteResult(): void {
     this.votes.clear();
@@ -515,6 +551,7 @@ export class GameRoom {
   tick(): void {
     const now = this.now();
     if (this.over) return;
+    if (this.phase === "reveal" && now >= this.phaseEndsAt) return this.endReveal();
     if (this.phase === "meeting" && now >= this.phaseEndsAt) return this.endMeeting();
     if (this.phase === "voteResult" && now >= this.phaseEndsAt) return this.endVoteResult();
     for (const [playerId, q] of [...this.open]) {
@@ -537,6 +574,8 @@ export class GameRoom {
     this.eject(playerId);
     this.send.publicChanged();
     this.checkWin();
+    // Nobody waits for someone who left.
+    this.endRevealIfAllReady();
     // Their missing vote shouldn't hold up a meeting.
     if (!this.over && this.phase === "meeting" && this.alive.size > 0 && [...this.alive].every((id) => this.votes.has(id))) {
       this.endMeeting();

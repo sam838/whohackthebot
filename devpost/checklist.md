@@ -109,7 +109,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
   Learner check: Put your key in `.env`, restart `npm run dev`, play Practice: open a terminal and watch Study-Bot explain its pick; call a meeting and read the bots' lines. Then remove the key and confirm the game still works.
   Commit: `Let Claude write Study-Bot's explanations and bot meeting lines`
 
-- [ ] **6. Open your book: the role reveal**
+- [x] **6. Open your book: the role reveal**
   Becomes usable: After Start, everyone sees the classroom with an open-book overlay. Tapping "Open your book" shows your character on the left page and your role on the right, with the quick facts typing out letter by letter and a key-click sound. Play then begins.
   Why now: It replaces slice 3's temporary role banner with the game's own reveal, once avatars exist to show in the book.
   PRD ref: `prd.md > Role Reveal`, `prd.md > Look and Feel`
@@ -191,3 +191,7 @@ Activity mode: [not started]
 - Slice 5d: bot meeting lines are asked for at most 15 words and only cut at 25 (the learner saw a line cut off with "…").
 - Title screen (learner feedback, outside the slice plan): the speech bubble no longer touches Study-Bot's antenna when it bounces or jumps in (the bot's rise is smoothly capped below the bubble); Study-Bot now acts out the game in a loop (a right answer stamped TRUE, a glitch "SYSTEM HACKED!", a confident wrong answer stamped FALSE, "Who hacked me?!") so the title shows what the game is about within seconds; the tagline is now "Never trust the bot blindly." in the title font. A three-step "how to play" row was tried and removed at the learner's request.
 - CREDITS.md now states that Study-Bot is an original mascot drawn in code, and what Claude does and doesn't decide.
+- Slice 6: the reveal is a server phase that ends when everyone closes their book (`reveal:ready`; practice bots count as ready) or after 15 seconds; the learner tried 20 s and 10 s first. Typing speed was tuned to match (about 5.7 s for the Student facts).
+- Slice 6 (learner requests): a Skip button shows all the text at once; the book opens by itself instead of waiting for an "Open your book" tap; roles already read on this device show their text at once; the role panel's "Open your book" reopens it during play (closes with the button, Esc, or a tap outside, and closes itself for meetings and Game Over).
+- Slice 6: the photo is a still image posed for each role (Student: hand up, head tilted; Fact-Checker: plain; Bluffer: bandit mask, hands behind the back), drawn once with a throwaway renderer. The learner chose this over a spinning 3D model to keep the book light. A magnifying glass prop and role stickers were tried and removed at the learner's request (the blocky hands can't hold props convincingly).
+- Slice 6 bugs found from the learner's 4-window test and screen recording: the photo canvas grew without limit (resize loop), the closed and open book jumped between two layouts, the photo page showed before the cover had opened, a dark backing showed as the cover lifted, photos stayed blank in background tabs (browsers pause animation frames there), and the photo overflowed its frame. All fixed; ffmpeg was installed so recordings can be checked frame by frame.

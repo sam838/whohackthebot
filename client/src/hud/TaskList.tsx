@@ -1,12 +1,13 @@
 import { BLUFFER_MAX_PIECES } from "@whtb/shared/constants";
 import { useState } from "react";
-import { useGame } from "../net/store";
+import { openBook, panelOpen, useGame } from "../net/store";
 import { ROLE_NAMES, ROLE_REMINDERS } from "./labels";
 
-/** Your role (temporary until the role book) and the pieces in your bag. */
+/** A reminder of your role (the role book shows it in full at the start) and the pieces in your bag. */
 export function TaskList() {
   const role = useGame((s) => s.role);
   const bag = useGame((s) => s.bag);
+  const canOpenBook = useGame((s) => s.game?.phase === "playing" && !panelOpen(s));
   const [open, setOpen] = useState(true);
   if (!role) return null;
   const isBluffer = role === "bluffer";
@@ -20,6 +21,9 @@ export function TaskList() {
       {open && (
         <div className="tasklist-body">
           <p className="reminder">{ROLE_REMINDERS[role]}</p>
+          <button className="btn small open-book" onClick={openBook} disabled={!canOpenBook}>
+            📖 Open your book
+          </button>
           <p className="bag-title">
             Your bag ({bag.length}
             {isBluffer ? `/${BLUFFER_MAX_PIECES}` : ""})

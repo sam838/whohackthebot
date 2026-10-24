@@ -29,7 +29,8 @@ function check(ok: boolean, label: string) {
 
 async function main() {
   // Never call the real API from the simulation, even if a key is set on this machine.
-  const { httpServer, io } = createApp({ ai: new AiService({}) });
+  // The role reveal only ends early when everyone is ready, which every game here does.
+  const { httpServer, io } = createApp({ ai: new AiService({}), revealMs: 8000 });
   await new Promise<void>((r) => httpServer.listen(0, r));
   const url = `http://localhost:${(httpServer.address() as AddressInfo).port}`;
   const clients: Client[] = [];
@@ -71,7 +72,16 @@ async function main() {
     }
     const started = Promise.all(players.map((s) => once<{ phase: string }>(s, "game:state")));
     host.emit("lobby:start");
-    check((await started).every((s) => s.phase === "playing"), "all 4 receive game:state playing");
+    check((await started).every((s) => s.phase === "reveal"), "all 4 open their role books first (phase reveal)");
+    host.emit("reveal:ready");
+    a.emit("reveal:ready");
+    b.emit("reveal:ready");
+    const halfReady = await once<{ phase: string; readyIds: string[] }>(c, "game:state", (g) => g.readyIds.length === 3);
+    check(halfReady.phase === "reveal", "class waits while someone is still reading");
+    const playing = Promise.all(players.map((s) => once<{ phase: string }>(s, "game:state", (g) => g.phase === "playing")));
+    c.emit("reveal:ready");
+    await playing;
+    check(true, "class starts as soon as all 4 are ready");
     await new Promise((r) => setTimeout(r, 200));
 
     console.log("secret roles");
@@ -159,8 +169,10 @@ async function main() {
       const { code } = await once<{ code: string }>(ps[0], "lobby:state");
       ps.slice(1).forEach((s, i) => s.emit("lobby:join", { code, name: `P${i}`, character: "female-c", color: "#f2c14e" }));
       await once(ps[0], "lobby:state", (st: { players: unknown[] }) => st.players.length === 4);
-      const go = Promise.all(ps.map((s) => once(s, "game:state")));
+      const go = Promise.all(ps.map((s) => once(s, "game:state", (g: { phase: string }) => g.phase === "playing")));
       ps[0].emit("lobby:start");
+      await once(ps[0], "game:role");
+      ps.forEach((s) => s.emit("reveal:ready"));
       await go;
       await new Promise((r) => setTimeout(r, 150));
       return { ps, roleOfP };
@@ -215,7 +227,11 @@ async function main() {
       const started = once<{ phase: string; players: { name: string }[] }>(solo, "game:state");
       solo.emit("practice:start", { name: "Solo", character: "male-a", color: "#f2c14e", role: "bluffer" });
       const st = await started;
-      check(st.phase === "playing" && st.players.length === 4, "practice starts at once with 4 players");
+      check(st.phase === "reveal" && st.players.length === 4, "practice opens the role book with 4 players");
+      const playing = once<{ phase: string }>(solo, "game:state", (g) => g.phase === "playing");
+      solo.emit("reveal:ready");
+      await playing;
+      check(true, "class starts when the player is ready (bots don't need to be)");
       check(st.players.filter((p) => p.name.endsWith("(bot)")).length === 3, "3 of them are bots");
       check((await roleSeen).role === "bluffer", "the player gets the role they picked");
       const first = await once<Record<string, { x: number; z: number }>>(solo, "positions");

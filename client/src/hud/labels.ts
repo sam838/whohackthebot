@@ -14,7 +14,7 @@ export const ROLE_NAMES: Record<Role, string> = {
   factChecker: "Fact-Checker",
 };
 
-/** One-line reminder shown in the HUD until the role book arrives in slice 6. */
+/** One-line reminder of your role in the HUD, after the role book has closed. */
 export const ROLE_REMINDERS: Record<Role, string> = {
   student: "Collect pieces, team up at a terminal, build questions. Study-Bot might be hacked.",
   bluffer: "Hack terminals so Study-Bot lies. Collect and solve like everyone to blend in (max 2 pieces).",

@@ -70,6 +70,8 @@ interface GameStore {
   myVote: string | null | undefined;
   /** When the current game appeared on screen (drives the intro animation). */
   introAt: number | undefined;
+  /** When you reopened your role book during play (undefined = closed). */
+  bookOpenedAt: number | undefined;
   setMenuScreen: (s: MenuScreen) => void;
   clearError: () => void;
 }
@@ -91,6 +93,7 @@ const freshGame = {
   voteResult: undefined,
   myVote: undefined,
   introAt: undefined,
+  bookOpenedAt: undefined,
 };
 
 export const useGame = create<GameStore>((set) => ({
@@ -130,8 +133,17 @@ export function closePanel() {
 }
 
 /** True while a terminal panel (arranging or answering) is open. */
-export function panelOpen(s: Pick<GameStore, "arrange" | "question">): boolean {
-  return Boolean(s.arrange || s.question);
+export function panelOpen(s: Pick<GameStore, "arrange" | "question" | "bookOpenedAt">): boolean {
+  return Boolean(s.arrange || s.question || s.bookOpenedAt !== undefined);
+}
+
+/** Read your role book again during play. */
+export function openBook() {
+  useGame.setState({ bookOpenedAt: performance.now() });
+}
+
+export function closeBook() {
+  useGame.setState({ bookOpenedAt: undefined });
 }
 
 let errorTimer: ReturnType<typeof setTimeout> | undefined;
@@ -155,7 +167,7 @@ socket.on("game:state", (game) => {
   if (!useGame.getState().game) useGame.setState({ introAt: performance.now() });
   if (game.phase === "meeting" && before !== "meeting") {
     // A meeting starts: terminals close and a fresh discussion begins.
-    useGame.setState({ chat: [], myVote: undefined, voteResult: undefined, arrange: undefined, question: undefined });
+    useGame.setState({ chat: [], myVote: undefined, voteResult: undefined, arrange: undefined, question: undefined, bookOpenedAt: undefined });
   }
   useGame.setState({ game, lobby: undefined });
 });
@@ -225,4 +237,4 @@ socket.on("terminal:hacked", ({ terminalId, cooldownMs }) =>
 socket.on("terminal:hackUsed", ({ terminalId }) =>
   useGame.setState((s) => ({ myHacks: s.myHacks.filter((t) => t !== terminalId) })),
 );
-socket.on("game:over", (gameOver) => useGame.setState({ gameOver, question: undefined, arrange: undefined }));
+socket.on("game:over", (gameOver) => useGame.setState({ gameOver, question: undefined, arrange: undefined, bookOpenedAt: undefined }));

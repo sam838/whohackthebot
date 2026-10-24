@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { socket } from "../net/socket";
 import { amAlive, useGame } from "../net/store";
 
-function useSecondsLeft(msLeft: number | undefined): number {
+export function useSecondsLeft(msLeft: number | undefined): number {
   const [endsAt, setEndsAt] = useState(() => performance.now() + (msLeft ?? 0));
   const [, tick] = useState(0);
   useEffect(() => setEndsAt(performance.now() + (msLeft ?? 0)), [msLeft]);

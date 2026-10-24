@@ -19,6 +19,8 @@ export interface ClientToServerEvents {
   "lobby:create": (p: { name: string; character: string; color: string }) => void;
   "lobby:join": (p: { code: string; name: string; character: string; color: string }) => void;
   "lobby:start": () => void;
+  /** Done reading your role book. */
+  "reveal:ready": () => void;
   /** Play alone against 3 bots, with the role you choose. */
   "practice:start": (p: { name: string; character: string; color: string; role: Role | "random" }) => void;
   move: (p: PlayerPosition) => void;

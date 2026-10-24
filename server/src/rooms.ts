@@ -210,6 +210,7 @@ export function gameState(room: Room): GameStatePublic {
     meetingCallerId: g?.meetingCallerId,
     phaseMsLeft: g?.phaseMsLeft(),
     votedIds: g?.votedIds() ?? [],
+    readyIds: g?.readyIds() ?? [],
     meetingCallsLeft: g?.meetingCallsLeft() ?? {},
   };
 }

@@ -533,3 +533,37 @@ describe("meetings", () => {
     expect(roomLast("vote:result")?.ejectedId ?? null).toBeNull();
   });
 });
+
+describe("role reveal", () => {
+  it("blocks pieces and terminals until class starts", () => {
+    const { game, floor, grab, ids } = setup();
+    game.beginReveal(20_000);
+    expect(game.phase).toBe("reveal");
+    expect(() => grab(ids[0], floor()[0].id)).toThrow("Class hasn't started yet.");
+  });
+
+  it("starts class as soon as everyone is ready, counting bots and leavers", () => {
+    const { game, ids } = setup();
+    game.beginReveal(20_000, [ids[3]]);
+    game.markReady(ids[0]);
+    game.markReady(ids[1]);
+    expect(game.phase).toBe("reveal");
+    expect(game.readyIds().sort()).toEqual([ids[0], ids[1], ids[3]].sort());
+    game.removePlayer(ids[2]);
+    expect(game.phase).toBe("playing");
+    expect(game.readyIds()).toEqual([]);
+  });
+
+  it("starts class when time runs out, even if someone never closed their book", () => {
+    const { game, advance, ids } = setup();
+    game.beginReveal(20_000);
+    game.markReady(ids[0]);
+    advance(19_000);
+    game.tick();
+    expect(game.phase).toBe("reveal");
+    expect(game.phaseMsLeft()).toBe(1_000);
+    advance(1_000);
+    game.tick();
+    expect(game.phase).toBe("playing");
+  });
+});

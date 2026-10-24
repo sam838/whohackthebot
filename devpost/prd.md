@@ -107,6 +107,9 @@ Source: `scope.md > Inspiration & Identity`.
   - [ ] Every player gets exactly one role: exactly 1 Bluffer, exactly 1 Fact-Checker, the rest Students.
   - [ ] Each player sees only their own role.
   - [ ] The book shows the player's character picture, role name, and quick facts typed out with sound.
+  - [ ] The book opens by itself; the photo is a still picture posed for the role (Bluffer wears a bandit mask). Skip shows all the text at once; roles you've read before show their text at once.
+  - [ ] Class starts when everyone closes their book, or after 15 seconds at most.
+  - [ ] During play, "Open your book" in the role panel opens it again; you close it whenever you like.
 
 **Quick facts (draft wording, editable):**
 - **Student:** Answer questions at Study-Bot terminals. But careful: someone may have hacked it. Trust it, or double-check? *Win:* answer enough questions right, or vote out the hacker.

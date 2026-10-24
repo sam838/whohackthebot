@@ -25,7 +25,7 @@ PRD ref: `prd.md > The Core Journey`.
 2. **Create Lobby** → phone sends `lobby:create {name, character, color}` → server makes a room with a 4-letter code, makes this player host → sends `lobby:state` → phone shows **Lobby** with code and share link `https://<site>/?room=ABCD`.
 3. **Join** → friend types the code, or the page reads `?room=ABCD` from the share link (after the avatar is set) → sends `lobby:join {code, name, character, color}` → server adds them (or replies with `error` such as "room not found") → everyone in the room gets the new `lobby:state`.
 4. **Start** → host sends `lobby:start` → server checks 4–5 players, **randomly assigns roles**, assigns each non-Bluffer 3 terminal tasks (Bluffer gets fake ones) → sends each player **privately** `game:role` plus the shared `game:state` (phase `reveal`).
-5. **Role Reveal** → phone shows the classroom and book scene; quick facts type out with a synthesized typing sound → after about 8 seconds the server switches phase to `playing`.
+5. **Role Reveal** → phone shows the classroom and book scene; quick facts type out with a synthesized typing sound → each player sends `reveal:ready` when they close the book; the server switches phase to `playing` once everyone is ready (practice bots count as ready), or after 15 seconds at most.
 6. **Walk** → the joystick (or WASD/arrow keys on desktop) moves your character locally, blocked by walls from the shared map → the phone sends `move {x, z, heading}` about 12 times a second → server stores it and broadcasts all positions about 12 times a second → other phones smoothly move those characters every frame.
 7. **Terminal** → near a terminal, the action button appears → `terminal:open {terminalId}` → server checks you're close, picks a question, and decides Study-Bot's pick (the correct option, or the lie if the terminal is hacked, which clears the hack) → privately sends `terminal:question {prompt, choices, botPick, deadline}`.
    - **Double-check** → `terminal:doubleCheck` → server moves the deadline 8 seconds earlier and sends `terminal:hint`.
@@ -88,7 +88,7 @@ From `prd.md > Look and Feel` and `scope.md > Inspiration & Identity`.
 - **School:** a common school in a cartoon style. Room floor colors: Classroom warm yellow `#f3dfa2`, Library lavender `#cdbbe8`, Science Lab mint `#b8e0d2`, Canteen peach `#f7c59f`, hallway light grey `#e4e1ea`, walls muted purple `#8c7aa3`. Toon-shaded materials (`MeshToonMaterial`) for the cartoon feel.
 - **Study-Bot:** terminals have bright yellow screens (`#ffd84d`). In the terminal panel, Study-Bot speaks in **chat bubbles** with a confidence meter, so it sounds sure of itself.
 - **UI (React DOM over the 3D canvas):** rounded, chunky, friendly. Headings in **Baloo 2**, body in **Nunito** (Google Fonts, with system-font fallbacks). Big tap targets for phones. Strikes are red, progress green, accent purple `#6b4fd8`.
-- **Role book:** an open-book card over the classroom scene. Character picture on the left page, role and quick facts on the right. Text types out letter by letter with a short synthesized key-click sound (Web Audio, no file). The reveal is started by tapping "Open your book," which also satisfies the browser's rule that sound needs a tap first.
+- **Role book:** an open-book card over the classroom scene. Character picture on the left page, role and quick facts on the right. Text types out letter by letter with a short synthesized key-click sound (Web Audio, no file). The book opens by itself (the player already tapped Start, Join, or Practice, which lets the browser play sound). The photo is a still image: the character is posed for the role, drawn once with a throwaway renderer, and kept for the session, so no 3D scene runs in the book.
 - **Tone:** playful and dramatic, never "educational." Copy like "Kicked out of school!", "Someone hacked Study-Bot…".
 - **Layout:** designed for **phone portrait**. The 3D view fills the screen, with the HUD on top (strikes and progress top, task list top-left collapsible, joystick bottom-left, action button bottom-right). Also works in a desktop window for testing and the demo.
 
@@ -100,7 +100,7 @@ Types and data both sides import, so client and server never disagree.
 - `events.ts`: typed Socket.IO event names and payloads (the list in **Socket Events**).
 - `map.ts`: room rectangles, wall segments, terminal positions (2 per room in Library, Science Lab, and Canteen, so 6 total), meeting button position, and classroom spawn seats. The client uses it for drawing and collision, the server for proximity checks.
 - `questions.ts`: the pre-written question set. See **Question Set**.
-- `constants.ts`: tuning values (min 4 / max 5 players, 3 tasks each, 3 strikes, 20s question timer, 8s double-check cost, 30s hack cooldown, 90s meeting, 1 meeting call per player, ~8s reveal, interaction radius).
+- `constants.ts`: tuning values (min 4 / max 5 players, 3 tasks each, 3 strikes, 20s question timer, 8s double-check cost, 30s hack cooldown, 90s meeting, 1 meeting call per player, 15s reveal at most, interaction radius).
 - `quickFacts.ts`: role-book text (from `prd.md > Role Reveal`).
 
 ### Game Server (`server/`)
@@ -126,7 +126,7 @@ PRD ref: `prd.md > Main Menu and Lobby`, `prd.md > States and Boundaries`.
 
 ### Role Reveal (client)
 PRD ref: `prd.md > Role Reveal`.
-- `screens/RoleReveal.tsx`: the classroom 3D scene behind an open-book overlay. "Open your book" tap → the book animates open → character on the left, role name and typed quick facts on the right.
+- `screens/RoleReveal.tsx`: the classroom 3D scene behind an open-book overlay. The book opens by itself → posed character photo on the left (`avatar/AvatarPhoto.tsx`), role name and typed quick facts on the right (`screens/typewriter.ts`; `screens/seenRoles.ts` remembers roles already read). The role panel's "Open your book" reopens it during play.
 - `audio/typing.ts`: Web Audio key-click generator, triggered per typed character with slight random pitch.
 
 ### School Scene (client 3D)
@@ -361,7 +361,7 @@ New folder/                      # project root (the hackathon repo)
 - **3D model fails to load** → the `<Suspense>` and error boundary show the **bean fallback** for that object. The game stays playable (learner's agreed fallback).
 - **No WebGL on a device** → a plain message: "Your browser can't show 3D. Try Chrome or another device."
 - **A player disconnects or refreshes mid-game** → treated as eliminated, their role hidden until Game Over, and win checks run (fewer than 3 alive with the Bluffer means the Bluffer wins). In the lobby, the next player becomes host.
-- **Sound blocked** → typing animation still plays silently. Sound only starts after the "Open your book" tap.
+- **Sound blocked** → typing animation still plays silently.
 
 ## What Was Simplified and Why
 - **Phones report their own movement and the server trusts it** (no anti-cheat), instead of the server simulating movement. Friends playing together don't cheat, and server-simulated movement would double the movement work.

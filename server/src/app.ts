@@ -2,7 +2,7 @@
 // each room's referee. Kept separate from index.ts so the simulation script
 // can start it on any port.
 
-import { POSITION_BROADCAST_RATE } from "@whtb/shared/constants";
+import { POSITION_BROADCAST_RATE, REVEAL_SECONDS } from "@whtb/shared/constants";
 import { SPAWN_SEATS } from "@whtb/shared/map";
 import type { ClientToServerEvents, ServerToClientEvents } from "@whtb/shared/events";
 import express from "express";
@@ -16,7 +16,7 @@ import { RoomManager, gameState, lobbyState, positionsOf, type Room } from "./ro
 
 export type GameServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
-export function createApp(options: { ai?: AiService } = {}) {
+export function createApp(options: { ai?: AiService; revealMs?: number } = {}) {
   const app = express();
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
@@ -97,6 +97,9 @@ export function createApp(options: { ai?: AiService } = {}) {
       Date.now,
       fixedRoles,
     );
+    // Role books first; practice bots don't need to read theirs.
+    const botIds = [...room.players.values()].filter((p) => p.isBot).map((p) => p.id);
+    room.game.beginReveal(options.revealMs ?? REVEAL_SECONDS * 1000, botIds);
     broadcastRoom(room);
     room.game.dealSecrets();
     if (room.practice) {
@@ -184,6 +187,7 @@ export function createApp(options: { ai?: AiService } = {}) {
       rooms.move(socket.id, pos);
     });
 
+    socket.on("reveal:ready", () => act((g) => g.markReady(socket.id)));
     socket.on("piece:pickup", (p) => act((g) => g.pickUp(socket.id, String(p?.pieceId))));
     socket.on("terminal:open", (p) => act((g) => g.openTerminal(socket.id, String(p?.terminalId))));
     socket.on("terminal:arrange", (p) => act((g) => g.arrange(socket.id, Array.isArray(p?.order) ? p.order.map(String) : [])));
