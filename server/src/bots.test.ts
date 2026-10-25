@@ -284,4 +284,19 @@ describe("talking to the bots", () => {
     p.run(5);
     for (const b of (p.controller as any).bots) expect(b.suspicion.get("human") ?? 0).toBe(0);
   });
+
+  it("everyone knows why a meeting started: whose slip was found, by whom, and where", () => {
+    const p = practice("bluffer");
+    for (const id of ["bot-1", "bot-2"]) p.positions.set(id, { x: 2, z: 2, heading: 0 });
+    p.positions.set("human", { x: 42, z: 4, heading: 0 });
+    p.positions.set("bot-0", { x: 42.6, z: 4, heading: 0 });
+    p.game.expel("human", "bot-0");
+    const slip = p.game.slips[0];
+    p.positions.set("bot-1", { x: slip.x, z: slip.z, heading: 0 });
+    p.game.reportSlip("bot-1", slip.id);
+    p.run(12);
+    const lines = botLines(p);
+    expect(lines.find((l) => l.fromId === "bot-1")?.text).toContain("I found bot-0's expulsion slip");
+    expect(lines.find((l) => l.fromId === "bot-2")?.text).toContain("bot-1 found bot-0's expulsion slip");
+  });
 });

@@ -162,14 +162,15 @@ Build mode: learn — learner tries every slice and approves before it is commit
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored — after slice 3 (the kernel playable in 4 windows), so feedback on Study-Bot, timing, and feel can shape meetings, avatars, and the reveal. Done: learner played 4 windows, confirmed it works, and found that a fast class wins before the Bluffer matters — leading to slice 3b (question pieces)
-- [ ] Final kick-the-tires exploration and feedback completed
+- [x] Final kick-the-tires exploration and feedback completed — learner play-tested the production build with the AI on (2026-10-25): loading and menu avatar, meetings and talking to the bots, playing as the Bluffer.
 
 ## Final Review
 
 - [x] Hide pieces inside objects you examine (paintings, shelves, desks): an Examine action finds a piece or says "Nothing here", not only pieces lying on the floor — learner request after slice 3b. Built: hiding spots with an Examine button and the E key, ◆ markers, bots search too. The learner played it on the production build.
 - [x] Balance: the learner felt a Bluffer could never win. A simulation of 150 all-bot games agreed (Bluffer 8%). Fixed with a smarter bot Bluffer (hacks near classmates), 3 questions per classmate, and a 20 s hack cooldown: about 50/50.
 - [x] Menu avatar: going from the title to the menu showed an empty avatar picture and no Study-Bot for a moment (setting up 3D froze the page mid-animation). Fixed with one live 3D avatar view created behind the loading screen and shared by every menu screen; it floats over each screen's avatar box and resizes in the same frame. Checked frame by frame in a headless browser; the learner confirmed "all good".
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] Bots now know why a meeting started: the learner saw a bot report a slip and then say "nobody got voted out yet". Every bot now knows whose slip was found, by whom, and where, and witnesses say who they saw expel. Covered by a test.
+- [x] Final review complete — feedback resolved and learner confirms ready to ship ("Okay i think thats enough", 2026-10-25)
 
 ## Code Tour and App Map
 

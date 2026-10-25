@@ -652,10 +652,14 @@ export class BotController {
         bot.chatAt = now + 2000 + this.random() * 6000;
         bot.voteAt = now + 20_000 + this.random() * 15_000;
         const report = this.game.meetingReport;
-        // Saw the expel happen: certain.
-        if (report && this.game.lastExpelWitnesses.includes(bot.id)) {
-          const bluffer = [...this.game.roles].find(([, r]) => r === "bluffer")?.[0];
-          if (bluffer) bot.suspicion.set(bluffer, (bot.suspicion.get(bluffer) ?? 0) + 10);
+        // Everyone knows why this meeting started: whose slip was found, by whom, and where.
+        if (report) {
+          const v = this.name(report.victimId);
+          bot.clues.push(
+            report.finderId === bot.id
+              ? `I found ${v}'s expulsion slip in the ${report.room}. Someone expelled ${v}!`
+              : `${this.name(report.finderId)} found ${v}'s expulsion slip in the ${report.room}, so someone expelled ${v}.`,
+          );
         }
         // The expelled classmate had just gone off with the human: everyone remembers.
         const victim = report && this.bots.find((b) => b.id === report.victimId);
@@ -668,6 +672,14 @@ export class BotController {
               : `${h} told ${v} to meet them in the ${victim.agreed.room}, and then ${v} got expelled.`,
           );
           bot.suspicion.set(this.world.humanId, (bot.suspicion.get(this.world.humanId) ?? 0) + 3);
+        }
+        // Saw the expel happen: certain, and it says so first.
+        if (report && this.game.lastExpelWitnesses.includes(bot.id)) {
+          const bluffer = [...this.game.roles].find(([, r]) => r === "bluffer")?.[0];
+          if (bluffer) {
+            bot.suspicion.set(bluffer, (bot.suspicion.get(bluffer) ?? 0) + 10);
+            bot.clues.push(`I saw ${this.name(bluffer)} expel ${this.name(report.victimId)} with my own eyes!`);
+          }
         }
         if (report) {
           for (const [pid, seen] of this.lastSeen.get(bot.id) ?? []) {
