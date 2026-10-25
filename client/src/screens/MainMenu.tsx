@@ -1,6 +1,8 @@
 import type { Avatar } from "@whtb/shared/avatars";
 import type { Role } from "@whtb/shared/types";
+import { QUICK_FACTS } from "@whtb/shared/quickFacts";
 import { useEffect, useRef, useState } from "react";
+import { AvatarPhoto } from "../avatar/AvatarPhoto";
 import { AvatarPicker } from "../avatar/AvatarPicker";
 import { AvatarPreview } from "../avatar/AvatarPreview";
 import { socket } from "../net/socket";
@@ -128,6 +130,68 @@ function ModeSelect({ avatar }: { avatar: Avatar }) {
         <b>Practice</b>
         <small>Play alone against 3 bots</small>
       </button>
+      <button className="btn howto-btn" onClick={() => go("howto")}>
+        ❓ How to play
+      </button>
+    </div>
+  );
+}
+
+/** The four things you do, each with a real picture from the game. */
+const HOWTO_STEPS = [
+  { img: "/howto/examine.jpg", title: "Find question pieces.", text: "They hide in desks, shelves, posters and more. A glowing ring means you can Examine it." },
+  { img: "/howto/terminal.jpg", title: "Meet at a Study-Bot terminal.", text: "3 pieces make one quiz question. Pieces from everyone standing there count." },
+  { img: "/howto/lie.jpg", title: "Trust Study-Bot, or double-check?", text: "It always sounds sure. If someone hacked it, trusting its answer gives the class a strike." },
+  { img: "/howto/meeting.jpg", title: "Call a meeting.", text: "Chat, then vote out who you think hacked it. In Practice, the bots read the chat." },
+];
+
+const HOWTO_ROLES: Role[] = ["student", "factChecker", "bluffer"];
+
+/** The rules on one big card: the steps with pictures, and a tab per role (like a mini role book). */
+function HowToPlay({ avatar }: { avatar: Avatar }) {
+  const [role, setRole] = useState<Role>("student");
+  const facts = QUICK_FACTS[role];
+  return (
+    <div className="card howto">
+      <h2 className="heading">How to play</h2>
+      <div className="howto-body">
+        <ol className="howto-steps">
+          {HOWTO_STEPS.map((step, i) => (
+            <li key={step.title}>
+              <img src={step.img} alt="" width={480} height={300} />
+              <p>
+                <span className="howto-num">{i + 1}</span>
+                <b>{step.title}</b> {step.text}
+              </p>
+            </li>
+          ))}
+        </ol>
+        <section className="howto-side">
+          <p className="howto-label">Roles · tap one</p>
+          <div className="howto-tabs" role="tablist" aria-label="Roles">
+            {HOWTO_ROLES.map((r) => (
+              <button key={r} role="tab" aria-selected={r === role} className={`howto-tab role-${r} ${r === role ? "on" : ""}`} onClick={() => setRole(r)}>
+                {QUICK_FACTS[r].title}
+              </button>
+            ))}
+          </div>
+          <div className={`howto-role role-${role}`} role="tabpanel">
+            <div className="howto-role-photo">
+              <AvatarPhoto character={avatar.character} role={role} />
+            </div>
+            <div className="howto-role-text">
+              <p>{facts.facts}</p>
+              <p>
+                <b>How you win:</b> {facts.win}
+              </p>
+              <p>
+                <b>At a terminal:</b> {facts.terminal}
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+      <Back to="mode" />
     </div>
   );
 }
@@ -189,6 +253,7 @@ export function MainMenu({ avatar, setAvatar }: MenuProps) {
       {screen === "mode" && <ModeSelect avatar={avatar} />}
       {screen === "vs" && <VsMenu avatar={avatar} />}
       {screen === "practice" && <PracticeMenu avatar={avatar} />}
+      {screen === "howto" && <HowToPlay avatar={avatar} />}
     </MenuBackdrop>
   );
 }

@@ -7,6 +7,7 @@ import { closeBook, useGame } from "../net/store";
 import { useSecondsLeft } from "./Meeting";
 import { hasSeenRole, markRoleSeen } from "./seenRoles";
 import { typedCount, typingSchedule } from "./typewriter";
+import { terminalPicture } from "./terminalPicture";
 
 /** How long the cover takes to swing open before the facts start typing (ms). */
 const COVER_FLIP_MS = 600;
@@ -114,6 +115,8 @@ function RoleBook({ reread }: { reread: boolean }) {
   }, [reread]);
 
   const me = game.players.find((p) => p.id === myId);
+  // The terminal picture is drawn once and reused (before any early return: hooks run in order).
+  const terminalImg = useMemo(terminalPicture, []);
   if (!me) return null;
   const facts = QUICK_FACTS[role];
   const alive = game.players.filter((p) => p.alive).length;
@@ -162,6 +165,14 @@ function RoleBook({ reread }: { reread: boolean }) {
             {/* Text already read is in place under the cover; new text starts typing once it's open. */}
             {(coverGone || instant) && (
               <TypedFacts facts={facts.facts} win={facts.win} startAt={(openedAt ?? 0) + COVER_FLIP_MS} skip={skipped || instant} onDone={doneTyping} />
+            )}
+            {(typed || instant) && (
+              <div className="book-terminal">
+                {terminalImg && <img src={terminalImg} alt="A Study-Bot terminal" width={96} height={80} />}
+                <p>
+                  <b>Study-Bot terminal.</b> {facts.terminal}
+                </p>
+              </div>
             )}
             <div className="book-foot">
               {!typed && !instant && (

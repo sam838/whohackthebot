@@ -64,7 +64,7 @@ export const HIDING_SPOTS: HidingSpot[] = [
   { id: "router-box", room: "server", label: "in the router box", x: 38.9, z: 5 },
   // Music Room
   { id: "piano", room: "music", label: "inside the piano", x: 26.5, z: 12.1 },
-  { id: "drums", room: "music", label: "in the bass drum", x: 32, z: 12.3 },
+  { id: "double-bass", room: "music", label: "behind the double bass", x: 32, z: 12.3 },
   { id: "speaker", room: "music", label: "behind the speaker", x: 33.3, z: 17.3 },
   { id: "guitar-case", room: "music", label: "in the guitar case", x: 25.6, z: 16.6 },
   { id: "sheet-music", room: "music", label: "in the sheet music", x: 33.7, z: 10.9 },

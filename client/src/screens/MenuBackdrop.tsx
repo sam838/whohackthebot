@@ -6,6 +6,7 @@ export const MENU_LINES = {
   mode: ["Play with friends?", "…or practice with me!"],
   vs: ["Bring your classmates!", "I'll answer everything."],
   practice: ["Pick a role!", "I promise I won't lie. ;)"],
+  howto: ["Rule number one:", "don't trust me blindly!"],
   join: ["Type the code!", "4 letters. Easy."],
   lobby: ["Waiting for classmates…", "Need 4 to start!"],
 } as const;

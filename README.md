@@ -83,8 +83,16 @@ One **Web Service** from this repo:
 npm test                  # unit tests: rules, referee, bots, AI service, typing, storage
 npm run sim               # full games with real Socket.IO clients (AI forced off)
 npm run smoke [url]       # checks a running production server (default http://localhost:4000)
-npm run ai:check          # two real Claude calls with your .env settings
+npm run ai:check          # a few real Claude calls with your .env settings
 npm run balance [games]   # many all-bot games: how often each side wins (aim: about even)
+```
+
+The demo video's footage was recorded by a script playing the real game (the page opened with `?demo` exposes a small read-only hook, `client/src/demo.ts`):
+
+```bash
+npm run demo:record -- <outDir> [url] [full|terminal|factchecker|bluffer|books|title|roles]
+npm run demo:cut -- raw <outDir>              # frames → raw.mp4, plus a timeline of what happened when
+npm run demo:cut -- cut <outDir> <plan.json>  # cut parts (from one or more recordings) into demo.mp4
 ```
 
 ## How it's built

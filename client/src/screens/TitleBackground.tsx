@@ -187,6 +187,8 @@ interface Props {
   botOnNarrow?: boolean;
   /** The title: Study-Bot acts out the game in a loop instead of saying one line. */
   story?: boolean;
+  /** Hide Study-Bot entirely (the How to play card needs the whole screen). */
+  hideBot?: boolean;
 }
 
 const easeOutCubic = (x: number) => 1 - Math.pow(1 - x, 3);
@@ -220,11 +222,12 @@ export function sendBotDown() {
  * restarts. When Study-Bot's line changes, it drops out of view and jumps back
  * up saying the new line.
  */
-export function TitleBackground({ line1 = "I'm always right!", line2 = "…probably.", botOnNarrow = true, story = false }: Props) {
+export function TitleBackground({ line1 = "I'm always right!", line2 = "…probably.", botOnNarrow = true, story = false, hideBot = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The drawing loop reads the latest props without restarting.
-  const live = useRef({ shown: { line1, line2, story }, next: { line1, line2, story }, enterAt: performance.now(), botOnNarrow });
+  const live = useRef({ shown: { line1, line2, story }, next: { line1, line2, story }, enterAt: performance.now(), botOnNarrow, hideBot });
   live.current.botOnNarrow = botOnNarrow;
+  live.current.hideBot = hideBot;
   live.current.next.story = story;
   const n = live.current.next;
   if (n.line1 !== line1 || n.line2 !== line2) {
@@ -264,7 +267,7 @@ export function TitleBackground({ line1 = "I'm always right!", line2 = "…proba
       const lowestBubbleTop = wide ? 16 * s : h * 0.56;
       const L = live.current;
       if (wallpaperCue.introAt > L.enterAt) L.enterAt = wallpaperCue.introAt;
-      const showBot = wide || L.botOnNarrow;
+      const showBot = !L.hideBot && (wide || L.botOnNarrow);
       const botX = wide ? w * 0.7 : w * 0.5;
       const botBase = wide ? h * 0.93 : h * 0.95;
       const burstY = wide || L.botOnNarrow ? botBase - 300 * s : h * 0.5;

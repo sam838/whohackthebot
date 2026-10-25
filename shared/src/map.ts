@@ -39,7 +39,7 @@ export interface Furniture {
     | "ballCart"
     | "serverRack"
     | "piano"
-    | "drumRiser"
+    | "stage"
     | "speaker"
     | "easel"
     | "paintShelf";
@@ -150,7 +150,7 @@ export const FURNITURE: Furniture[] = [
   { kind: "desk", x: 44.5, z: 5.5, w: 1.4, d: 0.8, h: 0.75, color: "#c98f5a", solid: true },
   // Music Room
   { kind: "piano", x: 26.5, z: 11, w: 2.4, d: 1, h: 1.1, color: "#1f1d2b", solid: true },
-  { kind: "drumRiser", x: 32, z: 13.5, w: 1.6, d: 1.4, h: 0.25, color: "#6f5f8c", solid: true },
+  { kind: "stage", x: 32, z: 13.5, w: 1.6, d: 1.4, h: 0.25, color: "#6f5f8c", solid: true },
   { kind: "speaker", x: 34.2, z: 17.3, w: 0.8, d: 0.7, h: 1.3, color: "#33303d", solid: true },
   // Art Room
   ...[38, 41].map((x): Furniture => ({ kind: "easel", x, z: 14, w: 1, d: 0.3, h: 1.6, color: "#a8744f", solid: true })),

@@ -16,7 +16,7 @@ import { applyPositions, localPlayer } from "../game/positions";
 import { socket } from "./socket";
 
 /** Menu steps before a game: title → your student → mode → VS or Practice (→ join). */
-export type MenuScreen = "title" | "avatar" | "mode" | "vs" | "practice" | "join";
+export type MenuScreen = "title" | "avatar" | "mode" | "vs" | "practice" | "join" | "howto";
 export type Screen = MenuScreen | "lobby" | "playing";
 
 /** A question open on this player's screen. Times are local (performance.now()). */

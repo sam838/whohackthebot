@@ -115,10 +115,10 @@ function Main() {
       {/* One wallpaper behind the title and every menu, so it never restarts between screens. */}
       {onMenus && (
         <div className="menu-wallpaper">
-          <TitleBackground line1={lines?.[0]} line2={lines?.[1]} botOnNarrow={screen === "title"} story={screen === "title"} />
+          <TitleBackground line1={lines?.[0]} line2={lines?.[1]} botOnNarrow={screen === "title"} story={screen === "title"} hideBot={screen === "howto"} />
         </div>
       )}
-      {(screen === "title" || screen === "avatar" || screen === "mode" || screen === "vs" || screen === "practice") && (
+      {(screen === "title" || screen === "avatar" || screen === "mode" || screen === "vs" || screen === "practice" || screen === "howto") && (
         <MainMenu avatar={avatar} setAvatar={setAvatar} />
       )}
       {screen === "join" && <Join avatar={avatar} />}

@@ -257,23 +257,36 @@ function NewWing() {
       <Block p={[38.3, 1.5, 5.15]} s={[0.03, 0.3, 0.03]} color="#33303d" />
       <WallPicture x={42} y={2.0} z={WALL_FACE} w={1.8} h={0.42} map={sign("STUDY-BOT v2")} />
 
-      {/* Music Room: piano keys, a drum kit, a guitar, the sheet-music board */}
+      {/* Music Room: piano keys, a double bass on the little stage, a guitar, the sheet-music board.
+          (A red drum here looked too much like the meeting button.) */}
       <Block p={[26.5, 1.12, 11.45]} s={[2.2, 0.04, 0.22]} color="#ffffff" />
       {Array.from({ length: 9 }, (_, i) => (
         <Block key={i} p={[25.6 + i * 0.22, 1.15, 11.4]} s={[0.08, 0.04, 0.12]} color="#1f1d2b" />
       ))}
-      <mesh position={[32, 0.65, 13.7]} rotation-x={Math.PI / 2}>
-        <cylinderGeometry args={[0.4, 0.4, 0.35, 20]} />
-        <meshToonMaterial color="#e5484d" />
-      </mesh>
-      <mesh position={[31.4, 0.6, 13.1]}>
-        <cylinderGeometry args={[0.2, 0.2, 0.15, 16]} />
-        <meshToonMaterial color="#f4f4f4" />
-      </mesh>
-      <mesh position={[32.6, 1.0, 13.1]}>
-        <cylinderGeometry args={[0.28, 0.28, 0.02, 20]} />
-        <meshToonMaterial color="#ffd84d" />
-      </mesh>
+      <group position={[32, 0.25, 13.6]}>
+        {/* Body: a big lower bout and a smaller upper one, in warm wood. */}
+        <mesh position-y={0.55} scale={[0.42, 0.5, 0.16]}>
+          <sphereGeometry args={[1, 18, 14]} />
+          <meshToonMaterial color="#a0522d" />
+        </mesh>
+        <mesh position-y={1.05} scale={[0.3, 0.34, 0.14]}>
+          <sphereGeometry args={[1, 16, 12]} />
+          <meshToonMaterial color="#a0522d" />
+        </mesh>
+        {/* Neck, scroll, strings, and the spike it stands on. */}
+        <Block p={[0, 1.65, 0]} s={[0.07, 0.9, 0.06]} color="#2b2440" />
+        <mesh position-y={2.12}>
+          <sphereGeometry args={[0.07, 10, 8]} />
+          <meshToonMaterial color="#2b2440" />
+        </mesh>
+        <Block p={[0, 1.2, 0.15]} s={[0.05, 1.5, 0.01]} color="#f2e6c9" />
+        <Block p={[0, 0.03, 0]} s={[0.03, 0.12, 0.03]} color="#33303d" />
+        {/* The bow, leaning against it. */}
+        <mesh position={[0.45, 0.65, 0.12]} rotation-z={0.35}>
+          <boxGeometry args={[0.025, 1.2, 0.025]} />
+          <meshToonMaterial color="#5a3a22" />
+        </mesh>
+      </group>
       <mesh position={[25.2, 0.45, 16.9]} scale={[1, 1.25, 0.4]}>
         <sphereGeometry args={[0.28, 14, 10]} />
         <meshToonMaterial color="#c0763a" />
@@ -352,16 +365,18 @@ function NewWing() {
       {[27.6, 29.2, 30.8].flatMap((x) =>
         [14.6, 16.4].map((z) => (
           <group key={`${x}-${z}`}>
-            <SchoolChair x={x} z={z + 0.25} color="#6b4fd8" turn={Math.PI} />
+            {/* Facing the stand in front of it, like the classroom chairs face their desks. */}
+            <SchoolChair x={x} z={z + 0.25} color="#6b4fd8" />
             <MusicStand x={x} z={z - 0.45} />
           </group>
         )),
       )}
-      <Block p={[29.4, 0.45, 11.2]} s={[1.4, 0.08, 0.5]} color="#8a5a2b" />
+      {/* The xylophone stands by the east wall, out of the doorway (players walk through decorations). */}
+      <Block p={[33.0, 0.45, 15.6]} s={[1.4, 0.08, 0.5]} color="#8a5a2b" />
       {["#e5484d", "#f2994a", "#ffd84d", "#4cbf87", "#5b8def", "#b07cf0", "#e5566b"].map((c, i) => (
-        <Block key={c} p={[28.85 + i * 0.18, 0.52, 11.2]} s={[0.14, 0.04, 0.42 - i * 0.03]} color={c} />
+        <Block key={c} p={[32.45 + i * 0.18, 0.52, 15.6]} s={[0.14, 0.04, 0.42 - i * 0.03]} color={c} />
       ))}
-      <Block p={[29.4, 0.2, 11.2]} s={[0.06, 0.4, 0.06]} color="#5a3a22" />
+      <Block p={[33.0, 0.2, 15.6]} s={[0.06, 0.4, 0.06]} color="#5a3a22" />
       <Block p={[33.8, 0.35, 12.6]} s={[0.6, 0.7, 0.4]} color="#2b2440" />
       <Block p={[33.8, 0.4, 12.81]} s={[0.45, 0.4, 0.01]} color="#6f5f8c" />
       <Block p={[30.6, 0.75, 12.2]} s={[0.04, 1.5, 0.04]} color="#33303d" />

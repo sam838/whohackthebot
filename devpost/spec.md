@@ -74,6 +74,8 @@ npm run build   # builds the page into client/dist and compiles the server
 npm start       # one Node process serves the page + Socket.IO on $PORT
 ```
 
+**Repository:** https://github.com/sam838/whohackthebot (pushed 2026-10-25; private until the learner switches it to public before submitting).
+
 **Public link (learner chose deployment):** one **Render Web Service** connected to the public GitHub repo.
 - Build command: `npm install && npm run build` · Start command: `npm start` · Node 20+.
 - The learner's Render trial credits allow a paid instance that doesn't sleep. On the free tier the service [sleeps after 15 minutes idle and takes about a minute to wake](https://render.com/docs/free). Same code either way.

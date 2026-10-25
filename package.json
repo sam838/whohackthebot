@@ -18,7 +18,9 @@
     "sim": "tsx server/scripts/sim.ts",
     "ai:check": "tsx --use-system-ca server/scripts/ai-check.ts",
     "smoke": "tsx server/scripts/smoke.ts",
-    "balance": "tsx server/scripts/balance.ts"
+    "balance": "tsx server/scripts/balance.ts",
+    "demo:record": "tsx server/scripts/record-demo.ts",
+    "demo:cut": "tsx server/scripts/cut-demo.ts"
   },
   "devDependencies": {
     "@types/node": "24.19.1",
