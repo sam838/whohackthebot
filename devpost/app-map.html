@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App Map: Who Hacked the Bot?</title>
+<style>
+  :root {
+    --ink: #2b2440;
+    --paper: #fffaf0;
+    --card: #ffffff;
+    --muted: #6b6380;
+    --yellow: #ffd84d;
+    --purple: #6c4fd8;
+    --green: #2fae6a;
+    --line: #e6dfcf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #f3eefc;
+      --paper: #1d1830;
+      --card: #28213f;
+      --muted: #b3aac8;
+      --line: #3d3459;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 0 0 6px; }
+  h2 { font-size: 21px; margin: 40px 0 10px; }
+  h3 { font-size: 17px; margin: 0 0 4px; }
+  p { margin: 0 0 12px; }
+  .sub { color: var(--muted); margin-bottom: 24px; }
+  code {
+    font: 14px/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1px 5px;
+    overflow-wrap: anywhere;
+  }
+  .card {
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin: 12px 0;
+  }
+  .pieces { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .pieces .card { margin: 0; }
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--purple);
+    margin-bottom: 4px;
+  }
+  @media (prefers-color-scheme: dark) { .tag { color: #b6a4ff; } }
+  ol.route { list-style: none; padding: 0; margin: 0; counter-reset: stop; }
+  ol.route li { counter-increment: stop; position: relative; padding-left: 48px; }
+  ol.route li::before {
+    content: counter(stop);
+    position: absolute;
+    left: 14px;
+    top: 16px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--yellow);
+    color: #2b2440;
+    font-weight: 800;
+    text-align: center;
+    line-height: 26px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-weight: 600; }
+  summary:focus-visible, a:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+  svg { width: 100%; height: auto; display: block; }
+  .diagram { padding: 10px; }
+  .diagram text { font: 13px system-ui, sans-serif; fill: #2b2440; }
+  .diagram .small { font-size: 11px; fill: #4a4260; }
+  pre {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    overflow-x: auto;
+    font: 14px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  .foot { color: var(--muted); font-size: 14px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>App Map: Who Hacked the Bot?</h1>
+  <p class="sub">A take-home guide to how the game is built and where to change things. Snapshot of commit <code>b863232</code>; the code may drift after this.</p>
+
+  <h2>What the app is</h2>
+  <p>A browser party game about not trusting AI blindly. Players walk a 3D school, find pieces of quiz questions, and answer them at terminals with the help of Study-Bot, an AI study assistant. One player is secretly the Bluffer, who hacks Study-Bot so it gives confident wrong answers, and can expel classmates. The class holds meetings, talks, and votes out whoever they think did it. In Practice mode you play against 3 bots, and you can talk to them in meetings.</p>
+
+  <div class="pieces">
+    <div class="card">
+      <span class="tag">shared/</span>
+      <h3>The rules and the school</h3>
+      <p>Map, rooms, hiding spots, questions, timings, and vision. Both the server and the browser read these files, so they always agree.</p>
+    </div>
+    <div class="card">
+      <span class="tag">server/</span>
+      <h3>The referee</h3>
+      <p><code>GameRoom</code> decides everything that counts: who holds which piece, hacks, expels, votes, and who wins. Also the practice bots and the Claude calls.</p>
+    </div>
+    <div class="card">
+      <span class="tag">client/</span>
+      <h3>What you see</h3>
+      <p>React screens (menus, meeting, terminal, Game Over), the 3D school (React Three Fiber), and the on-screen HUD. It sends your actions and shows what the referee says.</p>
+    </div>
+    <div class="card">
+      <span class="tag">External service</span>
+      <h3>Claude (Anthropic API)</h3>
+      <p>Writes Study-Bot's explanations and the bots' chat, and picks a bot's plan from a fixed list. If the AI is off or over budget, pre-written lines and keyword matching take over.</p>
+    </div>
+  </div>
+
+  <h2>One action, end to end: asking a bot to follow you</h2>
+  <p>In a practice meeting you type “Kevin, follow me”. Kevin answers in the chat and, after the meeting, walks with you.</p>
+
+  <div class="card diagram">
+    <svg viewBox="0 0 820 300" role="img" aria-labelledby="dtitle ddesc">
+      <title id="dtitle">How a meeting message reaches a bot and comes back</title>
+      <desc id="ddesc">You type in the meeting chat (Meeting.tsx). The message goes over Socket.IO to the server (app.ts), which checks it with GameRoom.chat and passes it to the bots (bots.ts hear). The bot asks Claude for a reply and a plan (ai.ts botReply), or uses keyword matching when the AI is off. The bot posts its reply, adopts the plan, and after the meeting followPlan walks it next to you, which you see in the 3D school.</desc>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#6c4fd8"/>
+        </marker>
+      </defs>
+      <g stroke="#2b2440" stroke-width="2.5">
+        <rect x="10" y="20" width="180" height="78" rx="12" fill="#ffd84d"/>
+        <rect x="230" y="20" width="180" height="78" rx="12" fill="#cdbbe8"/>
+        <rect x="450" y="20" width="180" height="78" rx="12" fill="#b8e0d2"/>
+        <rect x="630" y="150" width="180" height="78" rx="12" fill="#f7c59f"/>
+        <rect x="380" y="200" width="200" height="78" rx="12" fill="#b8e0d2"/>
+        <rect x="10" y="200" width="200" height="78" rx="12" fill="#ffd84d"/>
+      </g>
+      <g fill="none" stroke="#6c4fd8" stroke-width="2.5" marker-end="url(#arrow)">
+        <path d="M190 59 H226"/>
+        <path d="M410 59 H446"/>
+        <path d="M630 72 C 700 80, 720 110, 720 146"/>
+        <path d="M630 200 C 610 230, 600 239, 584 239"/>
+        <path d="M380 239 H214"/>
+      </g>
+      <text x="100" y="50" text-anchor="middle" font-weight="700">You type in chat</text>
+      <text x="100" y="72" text-anchor="middle" class="small">client/…/Meeting.tsx</text>
+      <text x="100" y="88" text-anchor="middle" class="small">emit "chat:send"</text>
+      <text x="320" y="50" text-anchor="middle" font-weight="700">Server receives it</text>
+      <text x="320" y="72" text-anchor="middle" class="small">server/src/app.ts</text>
+      <text x="320" y="88" text-anchor="middle" class="small">GameRoom.chat → bots.hear</text>
+      <text x="540" y="50" text-anchor="middle" font-weight="700">Bots listen</text>
+      <text x="540" y="72" text-anchor="middle" class="small">server/src/bots.ts</text>
+      <text x="540" y="88" text-anchor="middle" class="small">hear() picks who answers</text>
+      <text x="720" y="180" text-anchor="middle" font-weight="700">Claude replies</text>
+      <text x="720" y="202" text-anchor="middle" class="small">server/src/ai.ts botReply</text>
+      <text x="720" y="218" text-anchor="middle" class="small">JSON: say + plan</text>
+      <text x="480" y="230" text-anchor="middle" font-weight="700">Bot speaks and plans</text>
+      <text x="480" y="252" text-anchor="middle" class="small">adopt() then followPlan()</text>
+      <text x="480" y="268" text-anchor="middle" class="small">after the meeting, 30 s</text>
+      <text x="110" y="230" text-anchor="middle" font-weight="700">You see it</text>
+      <text x="110" y="252" text-anchor="middle" class="small">reply in the chat,</text>
+      <text x="110" y="268" text-anchor="middle" class="small">Kevin walking with you</text>
+    </svg>
+  </div>
+
+  <h2>Reference route: three stops in the code</h2>
+  <p>Not toured hands-on; follow it any time. Open the files in your editor and search for the anchor text.</p>
+  <ol class="route">
+    <li class="card">
+      <h3>Your message leaves the browser</h3>
+      <p><code>client/src/screens/Meeting.tsx</code>, search <code>socket.emit("chat:send"</code>. The chat form sends your text to the server over Socket.IO. In practice games, <code>someBot</code> fills the hint in the chat box.</p>
+    </li>
+    <li class="card">
+      <h3>The referee checks it, then the bots hear it</h3>
+      <p><code>server/src/app.ts</code>, search <code>socket.on("chat:send"</code>: it calls <code>GameRoom.chat</code> (<code>server/src/game/GameRoom.ts</code>), which only allows chat from living players during a meeting. When the message is sent to the room, <code>bots.get(room.code)?.hear(m.fromId, m.text)</code> passes it to the practice bots.</p>
+    </li>
+    <li class="card">
+      <h3>A bot answers and makes a plan</h3>
+      <p><code>server/src/bots.ts</code>, search <code>hear(fromId</code>: picks one or two bots (or the one you named) and asks <code>botReply</code> in <code>server/src/ai.ts</code>. Claude must answer in the shape of <code>REPLY_SCHEMA</code>, with a plan from <code>PLAN_KINDS</code> only. Without the AI, <code>keywordReply</code> does the same job. Then <code>adopt(</code> checks the plan against the game (a real room, a real player, never a vote against the speaker), and <code>followPlan(</code> carries it out after the meeting.</p>
+      <details>
+        <summary>The fixed list Claude must choose from</summary>
+<pre>export const PLAN_KINDS = ["follow", "meet", "search", "avoid", "vote", "none"] as const;</pre>
+      </details>
+    </li>
+  </ol>
+
+  <h2>To change this, start here</h2>
+  <table>
+    <thead><tr><th scope="col">I want to change…</th><th scope="col">Start here</th></tr></thead>
+    <tbody>
+      <tr><td>The quiz questions and Study-Bot's wrong answers</td><td><code>shared/src/questions.ts</code> (<code>QUESTIONS</code>)</td></tr>
+      <tr><td>Meeting length, expel cooldown, questions per player</td><td><code>shared/src/constants.ts</code> (<code>MEETING_SECONDS</code>, <code>EXPEL_COOLDOWN_SECONDS</code>, <code>QUESTIONS_PER_CLASSMATE</code>)</td></tr>
+      <tr><td>Rooms, walls, furniture, terminals</td><td><code>shared/src/map.ts</code> (<code>ROOMS</code>, <code>TERMINALS</code>)</td></tr>
+      <tr><td>Where pieces hide</td><td><code>shared/src/pieces.ts</code> (<code>HIDING_SPOTS</code>)</td></tr>
+      <tr><td>Study-Bot's personality, or how bots talk</td><td><code>server/src/ai.ts</code> (<code>STUDY_BOT_SYSTEM</code>, <code>REPLY_SYSTEM</code>)</td></tr>
+      <tr><td>How long bots keep a plan you gave them</td><td><code>server/src/bots.ts</code> (<code>PLAN_MS</code>)</td></tr>
+      <tr><td>The title screen's little story</td><td><code>client/src/screens/TitleBackground.tsx</code> (<code>STORY</code>)</td></tr>
+      <tr><td>The credit line on the loading screen</td><td><code>client/src/screens/LoadingScreen.tsx</code> (<code>CREDIT_LINE</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>A practice to reuse</h2>
+  <div class="card">
+    <h3>Let the AI pick; let your code decide. Turn every play-test surprise into a rule and a test.</h3>
+    <p><b>What happened:</b> in play-testing, bots voted the player out just for mentioning the piece “What colour”. Claude had misread the message as a request to vote for the speaker.</p>
+    <p><b>What fixed it:</b> Claude can only choose from a fixed menu (<code>PLAN_KINDS</code>, enforced by <code>REPLY_SCHEMA</code>), and the game checks every choice before acting on it (<code>adopt(</code> in <code>server/src/bots.ts</code> ignores a vote for the person speaking). A test now guards it: “ignores a plan to vote for the person who is talking” in <code>server/src/bots.test.ts</code>.</p>
+    <p><b>On your next project:</b> when an AI feature does something surprising, describe what you saw and what you expected (a screenshot helps). Then ask the agent for two things: a rule in code that blocks the bad case, and a test that recreates it. The AI stays creative, and the rules stay in your code.</p>
+  </div>
+
+  <h2>Run it again</h2>
+<pre>npm install
+npm run dev        # development: game at http://localhost:5173
+npm run build
+npm start          # production: http://localhost:3001, or $PORT
+npm test           # unit tests
+npm run sim        # bots play a full game
+npm run ai:check   # a few real Claude calls (needs ANTHROPIC_API_KEY in .env)</pre>
+  <p>To use Claude, copy <code>.env.example</code> to <code>.env</code> and add your own key. Never commit <code>.env</code>.</p>
+
+  <p class="foot">Generated from the finished code at commit <code>b863232</code>. Plans and decisions live in <code>devpost/</code> (scope, PRD, spec, checklist).</p>
+</main>
+</body>
+</html>

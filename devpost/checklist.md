@@ -172,15 +172,15 @@ Build mode: learn — learner tries every slice and approves before it is commit
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
+- [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: [not started]
-Route and stops: [not started]
-Edit outcome: [not started]
-Reflection: [not started]
-Activity mode: [not started]
+Activity and evidence: Brief recap (learner's choice, deadline the next day). Followed "asking a bot to follow you" from the meeting chat to Claude and back, using a real play-test moment as evidence: bots voted the learner out for mentioning the piece "What colour"; fixed by checking Claude's plan in code (`adopt` ignores a vote for the speaker) and guarded by a test.
+Route and stops: Reference route in the app map (not toured hands-on): `client/src/screens/Meeting.tsx` → `server/src/app.ts` / `GameRoom.chat` → `server/src/bots.ts` `hear` / `server/src/ai.ts` `botReply` / `adopt` / `followPlan`.
+Edit outcome: Not applicable (brief recap).
+Reflection: Offered; the learner answered (recorded in the private learner profile).
+Activity mode: Learn mode, brief recap.
 
 ## Revisions
 
