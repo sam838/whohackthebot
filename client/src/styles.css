@@ -2417,3 +2417,16 @@ body {
 .players .tag.left {
   background: #9a93ad;
 }
+
+/* One live 3D view of your avatar for all menus (avatar/AvatarPreview.tsx): it floats over whichever .avatar-preview box is on screen. */
+.avatar-float {
+  position: fixed;
+  left: -200px;
+  top: 0;
+  width: 72px;
+  height: 72px;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0;
+}

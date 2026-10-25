@@ -1,5 +1,6 @@
 import type { Avatar } from "@whtb/shared/avatars";
 import { useCallback, useEffect, useState } from "react";
+import { AvatarStage } from "./avatar/AvatarPreview";
 import { loadAvatar, saveAvatar } from "./avatar/avatarStorage";
 import { GameView } from "./game/GameView";
 import { attachKeyboard } from "./game/input";
@@ -109,6 +110,8 @@ function Main() {
 
   return (
     <>
+      {/* One live 3D avatar for every menu, set up behind the loading screen (avatar/AvatarPreview.tsx). */}
+      <AvatarStage />
       {/* One wallpaper behind the title and every menu, so it never restarts between screens. */}
       {onMenus && (
         <div className="menu-wallpaper">

@@ -9,21 +9,16 @@ const MIN_SHOW_MS = 2500;
 const FADE_MS = 400;
 /** Never wait longer than this: if a file is stuck, the game still starts (missing models fall back to simple shapes). */
 const GIVE_UP_MS = 20_000;
-/** At most this long to wait for the menu's 3D avatar to draw before fading anyway. */
-const PAINT_WAIT_MS = 2500;
 /** The developer credit under the bar. */
 export const CREDIT_LINE = "Made with ♥ for Build With AI";
-
-/** Set once the menu's 3D avatar has drawn its first frames (avatar/AvatarPreview.tsx). */
-export const menuPaint = { done: false };
 
 /**
  * Downloads every model and font before the title shows, so nothing pops or
  * shifts afterwards. The bar fills smoothly and never runs ahead of the real
  * download; the splash stays at least MIN_SHOW_MS, then fades out.
  * The menu starts underneath as soon as the files are in, so its slow first
- * moment (setting up 3D for the avatar) happens behind the splash, not during
- * the fade. Study-Bot's entrance starts when the fade does.
+ * moment (setting up 3D for your avatar) happens behind the splash. Study-Bot's
+ * entrance starts when the fade does.
  */
 export function LoadingScreen({ onReady, onDone }: { onReady: () => void; onDone: () => void }) {
   const { loaded, total, active } = useProgress();
@@ -56,7 +51,6 @@ export function LoadingScreen({ onReady, onDone }: { onReady: () => void; onDone
 
   useEffect(() => {
     if (readyAt === undefined || elapsed < MIN_SHOW_MS || leaving) return;
-    if (!menuPaint.done && elapsed - readyAt < PAINT_WAIT_MS) return;
     startWallpaperIntro();
     setLeaving(true);
   }, [readyAt, elapsed, leaving]);

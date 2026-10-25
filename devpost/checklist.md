@@ -168,6 +168,7 @@ Build mode: learn — learner tries every slice and approves before it is commit
 
 - [x] Hide pieces inside objects you examine (paintings, shelves, desks): an Examine action finds a piece or says "Nothing here", not only pieces lying on the floor — learner request after slice 3b. Built: hiding spots with an Examine button and the E key, ◆ markers, bots search too. The learner played it on the production build.
 - [x] Balance: the learner felt a Bluffer could never win. A simulation of 150 all-bot games agreed (Bluffer 8%). Fixed with a smarter bot Bluffer (hacks near classmates), 3 questions per classmate, and a 20 s hack cooldown: about 50/50.
+- [x] Menu avatar: going from the title to the menu showed an empty avatar picture and no Study-Bot for a moment (setting up 3D froze the page mid-animation). Fixed with one live 3D avatar view created behind the loading screen and shared by every menu screen; it floats over each screen's avatar box and resizes in the same frame. Checked frame by frame in a headless browser; the learner confirmed "all good".
 - [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
