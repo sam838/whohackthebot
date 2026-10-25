@@ -951,7 +951,8 @@ body {
 /* Wide screens: logo on the left half, Study-Bot on the right. */
 .title-content {
   position: absolute;
-  inset: 0 43% 0 9%;
+  /* Ends at the middle of the screen: Study-Bot's bubble starts just past it, so they never touch. */
+  inset: 0 50% 0 4%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2627,4 +2628,34 @@ body {
     width: 84px;
     height: 100px;
   }
+}
+
+/* Sound on/off: next to Leave game during play, top-right corner in the menus. */
+.status-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.sound-toggle {
+  pointer-events: auto;
+  width: 36px;
+  height: 30px;
+  font-size: 16px;
+  line-height: 1;
+  background: rgba(255, 250, 240, 0.94);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.sound-toggle.floating {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 30;
+  width: 44px;
+  height: 40px;
+  font-size: 20px;
 }

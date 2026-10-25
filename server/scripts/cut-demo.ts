@@ -2,7 +2,8 @@
 //   npm run demo:cut -- raw <dir>          frames → <dir>/raw.mp4 (30 fps), and prints the log in video time
 //   npm run demo:cut -- cut <dir> <plan>   cuts <dir>/raw.mp4 into <dir>/demo.mp4 following a plan file:
 //     [{ "from": 12.5, "to": 30, "speed": 1, "src": "../run2" }, …]  (seconds in raw.mp4; speed 2 plays
-//     twice as fast; src takes the part from another recording's raw.mp4, relative to <dir>)
+//     twice as fast; src takes the part from another recording's raw.mp4, relative to <dir>;
+//     hold freezes the part's last frame for that many extra seconds)
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -45,20 +46,21 @@ if (mode === "raw") {
   console.log(timeline);
   console.log(`\n${frames.length} frames, ${(frames.at(-1)!.t - t0).toFixed(0)} s → ${join(dir, "raw.mp4")}`);
 } else if (mode === "cut") {
-  const plan = JSON.parse(readFileSync(resolve(planArg), "utf8")) as { from: number; to: number; speed?: number; src?: string }[];
+  const plan = JSON.parse(readFileSync(resolve(planArg), "utf8")) as { from: number; to: number; speed?: number; src?: string; hold?: number }[];
   const parts: string[] = [];
   plan.forEach((seg, i) => {
     const part = join(dir, `part-${i}.mp4`);
     const speed = seg.speed ?? 1;
     const raw = join(seg.src ? resolve(dir, seg.src) : dir, "raw.mp4");
-    ffmpeg(["-ss", String(seg.from), "-to", String(seg.to), "-i", raw, "-vf", `setpts=PTS/${speed},fps=30`, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", part]);
+    const hold = seg.hold ? `,tpad=stop_mode=clone:stop_duration=${seg.hold}` : "";
+    ffmpeg(["-ss", String(seg.from), "-to", String(seg.to), "-i", raw, "-vf", `setpts=PTS/${speed},fps=30${hold}`, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", part]);
     parts.push(part);
   });
   const listFile = join(dir, "parts.txt");
   writeFileSync(listFile, parts.map((p) => `file '${p.replace(/\\/g, "/")}'`).join("\n"));
   ffmpeg(["-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", join(dir, "demo.mp4")]);
   for (const p of parts) rmSync(p, { force: true });
-  const total = plan.reduce((sum, s) => sum + (s.to - s.from) / (s.speed ?? 1), 0);
+  const total = plan.reduce((sum, s) => sum + (s.to - s.from) / (s.speed ?? 1) + (s.hold ?? 0), 0);
   console.log(`demo.mp4: ${plan.length} parts, about ${total.toFixed(0)} s → ${join(dir, "demo.mp4")}`);
 } else {
   console.log("Usage: npm run demo:cut -- raw <dir>  |  npm run demo:cut -- cut <dir> <plan.json>");

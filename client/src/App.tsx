@@ -1,5 +1,6 @@
 import type { Avatar } from "@whtb/shared/avatars";
 import { useCallback, useEffect, useState } from "react";
+import { attachGameSounds } from "./audio/gameSounds";
 import { AvatarStage } from "./avatar/AvatarPreview";
 import { loadAvatar, saveAvatar } from "./avatar/avatarStorage";
 import { GameView } from "./game/GameView";
@@ -15,6 +16,7 @@ import { GameOver } from "./screens/GameOver";
 import { Meeting } from "./screens/Meeting";
 import { VoteResultScreen } from "./screens/VoteResult";
 import { Joystick } from "./hud/Joystick";
+import { SoundToggle } from "./hud/SoundToggle";
 import { StrikeBar } from "./hud/StrikeBar";
 import { TaskList } from "./hud/TaskList";
 import { socket } from "./net/socket";
@@ -83,6 +85,8 @@ export function App() {
   const [splash, setSplash] = useState(true);
   const start = useCallback(() => setStarted(true), []);
   const hideSplash = useCallback(() => setSplash(false), []);
+  // Music and sound effects follow the game from here on (audio/gameSounds.ts).
+  useEffect(() => attachGameSounds(), []);
   return (
     <>
       {started && <Main />}
@@ -110,6 +114,7 @@ function Main() {
 
   return (
     <>
+      {onMenus && <SoundToggle floating />}
       {/* One live 3D avatar for every menu, set up behind the loading screen (avatar/AvatarPreview.tsx). */}
       <AvatarStage />
       {/* One wallpaper behind the title and every menu, so it never restarts between screens. */}

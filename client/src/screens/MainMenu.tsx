@@ -8,7 +8,7 @@ import { AvatarPreview } from "../avatar/AvatarPreview";
 import { socket } from "../net/socket";
 import { useGame, type MenuScreen } from "../net/store";
 import { MENU_LINES, MenuBackdrop } from "./MenuBackdrop";
-import { BOT_EXIT_MS, sendBotDown } from "./TitleBackground";
+import { BOT_EXIT_MS, sendBotDown, wallpaperCue } from "./TitleBackground";
 
 // Game-style menus, one short step per screen so nothing needs scrolling:
 // Title (press start) → Your student → Mode (VS / Practice) → VS or Practice.
@@ -57,6 +57,9 @@ function TitleScreen({ avatar }: { avatar: Avatar }) {
   // Returning players with a saved name skip straight to choosing a mode.
   // The title zooms away first, then the next card pops in.
   const next = () => {
+    // The title waits behind the loading screen: ignore presses until it has faded in
+    // (wallpaperCue.introAt is when the fade began), so a click while loading can't skip it.
+    if (!Number.isFinite(wallpaperCue.introAt) || performance.now() - wallpaperCue.introAt < 900) return;
     if (leavingRef.current) return;
     leavingRef.current = true;
     setLeaving(true);

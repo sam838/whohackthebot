@@ -11,20 +11,22 @@
 //   books        just the three role books, each held open long enough to read
 //   title        the title screen's whole story loop (about 13 s), then the menu
 //   roles        the Practice role picker, pointing at each role in turn
+//   blufferwin   the Bluffer expels a classmate unseen, blames another in the meeting, and wins
 
 import { spawn, spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { distance } from "@whtb/shared/geometry";
-import { MEETING_BUTTON, TERMINALS, type Point } from "@whtb/shared/map";
+import { MEETING_BUTTON, TERMINALS, roomAt, type Point } from "@whtb/shared/map";
 import { findPath } from "@whtb/shared/nav";
 import { HIDING_SPOTS } from "@whtb/shared/pieces";
 import { QUESTIONS } from "@whtb/shared/questions";
+import { canSee } from "@whtb/shared/vision";
 import { terminalStand } from "../src/bots";
 
 const outDir = resolve(process.argv[2] ?? "demo-recording");
 const url = (process.argv[3] ?? "http://localhost:4000/").replace(/\/?$/, "/") + "?demo";
-const SCENES = ["full", "terminal", "factchecker", "bluffer", "books", "title", "roles"] as const;
+const SCENES = ["full", "terminal", "factchecker", "bluffer", "books", "title", "roles", "blufferwin"] as const;
 const scene = SCENES.find((x) => x === process.argv[4]) ?? "full";
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const PORT = 9334;
@@ -32,7 +34,7 @@ const TAG = "edge-demo-recorder";
 const WIDTH = 1600;
 const HEIGHT = 900;
 /** Stop recording after this long, whatever happens. */
-const MAX_MS = 11 * 60_000;
+const MAX_MS = (process.argv[4] === "factchecker" || process.argv[4] === "blufferwin" ? 25 : 11) * 60_000;
 
 const framesDir = join(outDir, "frames");
 const profile = join(outDir, TAG);
@@ -46,13 +48,21 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // --- Talking to the browser (Chrome DevTools Protocol) ---
 
 const edge = spawn(EDGE, [
-  "--headless=new",
+  // RECORD_HEADED=1 records in a visible window (a hidden one can stop drawing on some machines).
+  ...(process.env.RECORD_HEADED ? ["--window-position=0,0", "--new-window"] : ["--headless=new"]),
   `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`,
   `--window-size=${WIDTH},${HEIGHT}`,
   "--no-first-run",
   "--ignore-gpu-blocklist",
   "--autoplay-policy=no-user-gesture-required",
+  // Keep drawing even when Windows says the (hidden) window is covered, e.g. by a full-screen app.
+  "--disable-features=CalculateNativeWinOcclusion",
+  "--disable-backgrounding-occluded-windows",
+  "--disable-renderer-backgrounding",
+  "--disable-background-timer-throttling",
+  // Software drawing for the staged scene: the graphics card is busy with OBS/Clipchamp.
+  ...(process.env.RECORD_SOFTWARE ? ["--disable-gpu", "--enable-unsafe-swiftshader"] : []),
   "about:blank",
 ]);
 
@@ -386,7 +396,8 @@ async function factCheckerScene() {
     await sleep(4500);
     const gameStart = Date.now();
     let result: { verified: boolean; outcome: string } | false = false;
-    while (!result && Date.now() - gameStart < 5 * 60_000 && Date.now() - startedAt < MAX_MS) {
+    let askedForPieces = false;
+    while (!result && Date.now() - gameStart < 7 * 60_000 && Date.now() - startedAt < MAX_MS) {
       const s = await st();
       if (s.gameOver || !s.alive) break;
       if (s.phase === "meeting") {
@@ -395,6 +406,35 @@ async function factCheckerScene() {
       }
       if (!inClass(s)) {
         await sleep(300);
+        continue;
+      }
+      // With a piece in hand, call a meeting and ask everyone to bring their pieces to the Library terminal
+      // (the bots agree and wait there with their pieces, so a full question is likely).
+      if (s.bag.length >= 1 && !askedForPieces && s.meetingCalls > 0) {
+        askedForPieces = true;
+        mark("fact-checker: calling a meeting to gather pieces");
+        await walkTo({ x: MEETING_BUTTON.x, z: MEETING_BUTTON.z + 0.9 });
+        await waitFor(async () => (await st()).nearButton, 1500);
+        await press("KeyE");
+        if (await waitFor(async () => (await st()).phase === "meeting", 3000)) {
+          await meeting(["What pieces do you all have?", "Everyone meet me at the Library terminal after this, bring your pieces!"]);
+          if ((await st()).phase === "playing") {
+            // Wait in the hallway outside the Library until two classmates stand at its terminal: with
+            // witnesses there, the Bluffer won't expel you (it only strikes when nobody is watching).
+            await walkTo({ x: 18, z: 9 });
+            const lib = TERMINALS.find((x) => x.id === "library-1")!;
+            await waitFor(async () => {
+              const now = await st();
+              if (!inClass(now)) return true;
+              const alive = now.others.filter((o) => now.players.find((p) => p.id === o.id)?.alive);
+              return alive.filter((o) => distance(o, lib) <= 2.5).length >= 2;
+            }, 40_000, 300);
+            mark("fact-checker: classmates are at the Library terminal");
+            await walkTo(terminalStand("library-1"));
+            await sleep(1500);
+            result = await verifyAtTerminal("library-1");
+          }
+        }
         continue;
       }
       if (s.bag.length >= 1) {
@@ -469,6 +509,90 @@ async function blufferScene() {
       await sleep(3000);
       return;
     }
+    await leaveGame();
+  }
+}
+
+const plainName = (name: string) => name.replace(/\s*\(bot\)$/, "");
+
+/**
+ * The Bluffer wins by lying: expel a classmate nobody else can see, then in the meeting blame
+ * another classmate and vote for them. If the class votes out that innocent player, only two
+ * are left and the Bluffer wins.
+ */
+async function blufferWinScene() {
+  for (let gameNo = 1; gameNo <= 4; gameNo++) {
+    mark(`bluffer win: game ${gameNo}`);
+    await roleBook("bluffer", true, true);
+    await sleep(4500);
+    let victim: { id: string; name: string; room: string } | undefined;
+    const huntStart = Date.now();
+    while (!victim && Date.now() - huntStart < 150_000) {
+      const s = await st();
+      if (s.gameOver || !s.alive) break;
+      if (s.phase === "meeting") {
+        await meeting([]);
+        continue;
+      }
+      if (!inClass(s)) {
+        await sleep(300);
+        continue;
+      }
+      const alive = s.others.filter((o) => s.players.find((p) => p.id === o.id)?.alive);
+      // A classmate nobody else can see right now.
+      const alone = alive.filter((c) => !alive.some((o) => o !== c && canSee(o, c)));
+      const p = await me();
+      const target = p ? [...alone].sort((a, b) => distance(p, a) - distance(p, b))[0] : undefined;
+      if (!target) {
+        await sleep(400);
+        continue;
+      }
+      await walkTo(target, 1200);
+      const now = await st();
+      const t = now.others.find((o) => o.id === target.id);
+      const stillAlone = t && !now.others.some((o) => o.id !== t.id && now.players.find((q) => q.id === o.id)?.alive && canSee(o, t));
+      if (now.nearVictim === target.id && now.expelReady && stillAlone && inClass(now)) {
+        await press("KeyQ");
+        await sleep(400);
+        const after = await st();
+        if (!after.players.find((q) => q.id === target.id)?.alive) {
+          const name = plainName(after.players.find((q) => q.id === target.id)?.name ?? "someone");
+          victim = { id: target.id, name, room: roomAt(t!)?.name ?? "the hallway" };
+          mark(`bluffer win: expelled ${name} unseen`);
+        }
+      }
+    }
+    if (victim) {
+      await sleep(3000);
+      // Someone finds the slip; if not, call the meeting yourself.
+      if (!(await waitFor(async () => (await st()).phase === "meeting", 35_000))) {
+        mark("bluffer win: calling the meeting");
+        await walkTo({ x: MEETING_BUTTON.x, z: MEETING_BUTTON.z + 0.9 });
+        await waitFor(async () => (await st()).nearButton, 1500);
+        await press("KeyE");
+        await waitFor(async () => (await st()).phase === "meeting", 3000);
+      }
+      const s = await st();
+      if (s.phase === "meeting") {
+        mark("meeting: start");
+        const scapegoat = s.players.find((q) => q.alive && q.id !== s.myId);
+        await sleep(3000);
+        if (scapegoat) {
+          const name = plainName(scapegoat.name);
+          await say(`I saw ${name} expel ${victim.name} near the ${victim.room}! Vote ${name}!`);
+          await sleep(4000);
+          await clickText(".voter", name);
+          mark(`bluffer win: voted ${name}`);
+        }
+        const over = await waitFor(async () => (await st()).gameOver, 100_000);
+        if (over) {
+          mark("bluffer win: game over");
+          await sleep(9000);
+          return;
+        }
+      }
+    }
+    mark(`bluffer win: game ${gameNo} did not end in a win`);
     await leaveGame();
   }
 }
@@ -609,6 +733,7 @@ try {
     if (scene === "terminal") await terminalScene();
     if (scene === "factchecker") await factCheckerScene();
     if (scene === "bluffer") await blufferScene();
+    if (scene === "blufferwin") await blufferWinScene();
     if (scene === "title") await sleep(1000);
     if (scene === "roles") {
       await click(".mode.practice");
